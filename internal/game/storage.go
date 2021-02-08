@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	storageFile = "data.json"
+	storageFile = "data/data.json"
 )
 
 type (
