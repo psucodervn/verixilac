@@ -18,4 +18,6 @@ var (
 	ErrYouArePlayed            = errors.New("bạn đã qua lượt")
 	ErrTooLow                  = errors.New("chưa đủ tẩy")
 	ErrEmptyGame               = errors.New("chưa có người tham gia")
+	ErrPlayerNotStandYet       = errors.New("người chơi chưa rút xong")
+	ErrPlayerIsDone            = errors.New("đã tính rồi")
 )

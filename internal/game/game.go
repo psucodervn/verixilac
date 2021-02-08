@@ -283,9 +283,16 @@ func (g *Game) PlayerNext() (*PlayerInGame, error) {
 	return playPG, nil
 }
 
-func (g *Game) Done(pg *PlayerInGame) int64 {
+func (g *Game) Done(pg *PlayerInGame) (int64, error) {
 	if pg.IsDone() {
-		return pg.Reward()
+		return pg.Reward(), nil
+	}
+	if st := pg.Status(); st != PlayerStood {
+		if st < PlayerStood {
+			return 0, ErrPlayerNotStandYet
+		} else {
+			return 0, ErrPlayerIsDone
+		}
 	}
 
 	reward := GetReward(g.dealer, pg)
@@ -295,7 +302,7 @@ func (g *Game) Done(pg *PlayerInGame) int64 {
 	if g.doneCnt.Load() == 0 {
 		g.status.Store(uint32(Finished))
 	}
-	return reward
+	return reward, nil
 }
 
 func (g *Game) OnPlayerPlay(f func(pg *PlayerInGame)) {
@@ -312,7 +319,7 @@ func Compare(a, b *PlayerInGame) Result {
 	} else if rta > rtb {
 		return Lose
 	}
-	if rta == TypeTooHigh {
+	if rta == TypeTooHigh || rta == TypeBusted || rta == TypeTooLow {
 		return Draw
 	}
 	res := compareScore(a.Cards().Value(), b.Cards().Value())

@@ -16,6 +16,7 @@ func TestCompare(t *testing.T) {
 		args args
 		want Result
 	}{
+		{args: args{aIds: []int{7, 7, 7}, bIds: []int{7, 7, 8}}, want: Draw},
 		{args: args{aIds: []int{10, 12}, bIds: []int{5, 0, 11}}, want: Win},
 		{args: args{aIds: []int{1, 2}, bIds: []int{0, 5, 7}}, want: Draw},
 		{args: args{aIds: []int{1, 2}, bIds: []int{0, 5, 9}}, want: Lose},

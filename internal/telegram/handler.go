@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -116,23 +117,23 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 	}
 
 	// FIXME: fake
-	// m1 := &telebot.Message{ID: 123, Payload: g.ID(), Chat: &telebot.Chat{ID: 123, Username: "Test 1"}}
-	// for {
-	//   ok := h.doStand(m1, true)
-	//   if ok {
-	//     break
-	//   }
-	//   ok = h.doHit(m1, true)
-	// }
-	//
-	// m2 := &telebot.Message{ID: 456, Payload: g.ID(), Chat: &telebot.Chat{ID: 456, Username: "Test 2"}}
-	// for {
-	//   ok := h.doStand(m2, true)
-	//   if ok {
-	//     break
-	//   }
-	//   ok = h.doHit(m2, true)
-	// }
+	m1 := &telebot.Message{ID: 123, Payload: g.ID(), Chat: &telebot.Chat{ID: 123, Username: "Test 1"}}
+	for {
+		ok := h.doStand(m1, true)
+		if ok {
+			break
+		}
+		ok = h.doHit(m1, true)
+	}
+
+	m2 := &telebot.Message{ID: 456, Payload: g.ID(), Chat: &telebot.Chat{ID: 456, Username: "Test 2"}}
+	for {
+		ok := h.doStand(m2, true)
+		if ok {
+			break
+		}
+		ok = h.doHit(m2, true)
+	}
 }
 
 func (h *Handler) doCancel(m *telebot.Message, onQuery bool) {
@@ -304,17 +305,33 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 		h.sendMessage(m.Chat, "Sai thông tin")
 		return
 	}
-	if st := to.Status(); st != game.PlayerStood {
-		if st < game.PlayerStood {
-			h.sendMessage(m.Chat, "Người chơi chưa rút xong")
-		} else {
-			h.sendMessage(m.Chat, "Đã tính rồi")
-		}
+
+	reward, err := g.Done(to)
+	if err != nil {
+		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+	}
+	if h.game.CheckIfFinish(h.ctx(m), g) {
 		return
 	}
 
-	g.Done(to)
-	h.game.CheckIfFinish(h.ctx(m), g)
+	msg := fmt.Sprintf("Bài của %s: %s\n%s: %+dk",
+		to.Name(), to.Cards().String(false, false),
+		to.Name(), -reward,
+	)
+	if onQuery {
+		h.editMessage(m, msg)
+	} else {
+		h.sendMessage(ToTelebotChat(dealer.ID()), msg)
+	}
+
+	if reward < 0 {
+		msg = fmt.Sprintf("Cái lật bài bạn và thua. Bạn được cộng %dk", -reward)
+	} else if reward > 0 {
+		msg = fmt.Sprintf("Cái lật bài bạn và thắng. Bạn bị trừ %dk", reward)
+	} else {
+		msg = fmt.Sprintf("Cái lật bài bạn và hoà. Bạn không bị mất tiền")
+	}
+	h.sendMessage(ToTelebotChat(to.ID()), msg)
 }
 
 func (h *Handler) onGameFinish(g *game.Game) {
