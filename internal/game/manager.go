@@ -257,8 +257,14 @@ func (m *Manager) PlayerBet(ctx context.Context, g *Game, p *Player, amount uint
 }
 
 func (m *Manager) PlayerStand(ctx context.Context, g *Game, pg *PlayerInGame) error {
+	if pg.IsDone() {
+		return nil
+	}
+	if !pg.CanStand() {
+		return ErrYouCannotStand
+	}
 	if err := g.PlayerStand(pg); err != nil {
-		log.Ctx(ctx).Err(err).Msg("player stand failed")
+		log.Ctx(ctx).Err(err).Str("cards", pg.Cards().String(false)).Msg("player stand failed")
 		return err
 	}
 
@@ -277,6 +283,10 @@ func (m *Manager) PlayerStand(ctx context.Context, g *Game, pg *PlayerInGame) er
 }
 
 func (m *Manager) PlayerHit(ctx context.Context, g *Game, pg *PlayerInGame) error {
+	if !pg.CanHit() {
+		return ErrYouCannotHit
+	}
+
 	c, err := g.RemoveCard()
 	if err != nil {
 		return err
@@ -297,7 +307,7 @@ func (m *Manager) CheckIfFinish(ctx context.Context, g *Game) bool {
 	if !g.Finished() {
 		return false
 	}
-	err := m.FinishGame(ctx, g)
+	err := m.FinishGame(ctx, g, false)
 	return err == nil
 }
 
@@ -317,15 +327,34 @@ func (m *Manager) Deal(ctx context.Context, g *Game) error {
 }
 
 func (m *Manager) Start(ctx context.Context, g *Game) error {
+	// check for early win
+	gt := g.Dealer().Type()
+	if gt == TypeDoubleBlackJack || gt == TypeBlackJack {
+		return m.FinishGame(ctx, g, true)
+	}
+
+	cnt := 0
+	for _, p := range g.Players() {
+		pt := p.Type()
+		if pt == TypeDoubleBlackJack || pt == TypeBlackJack {
+			_, _ = g.Done(p, true)
+			cnt++
+		}
+	}
+
+	if cnt == len(g.Players()) {
+		return m.FinishGame(ctx, g, true)
+	}
+
 	if _, err := g.PlayerNext(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (m *Manager) FinishGame(ctx context.Context, g *Game) error {
+func (m *Manager) FinishGame(ctx context.Context, g *Game, force bool) error {
 	for _, pg := range g.Players() {
-		if _, err := g.Done(pg); err != nil {
+		if _, err := g.Done(pg, force); err != nil {
 			return err
 		}
 	}

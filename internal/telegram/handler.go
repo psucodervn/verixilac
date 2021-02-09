@@ -125,7 +125,9 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 			if ok {
 				break
 			}
-			ok = h.doHit(m1, true)
+			if ok = h.doHit(m1, true); !ok {
+				break
+			}
 		}
 
 		m2 := &telebot.Message{ID: 456, Payload: g.ID(), Chat: &telebot.Chat{ID: 456, Username: "Test 2"}}
@@ -134,7 +136,9 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 			if ok {
 				break
 			}
-			ok = h.doHit(m2, true)
+			if ok = h.doHit(m2, true); !ok {
+				break
+			}
 		}
 	}
 }
@@ -271,7 +275,7 @@ func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
 		return false
 	}
 
-	if err := h.game.FinishGame(h.ctx(m), g); err != nil {
+	if err := h.game.FinishGame(h.ctx(m), g, false); err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return false
 	}
@@ -327,7 +331,7 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	reward, err := g.Done(to)
+	reward, err := g.Done(to, false)
 	if err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 	}

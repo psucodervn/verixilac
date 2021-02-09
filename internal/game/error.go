@@ -20,4 +20,6 @@ var (
 	ErrEmptyGame               = errors.New("chưa có người tham gia")
 	ErrPlayerNotStandYet       = errors.New("người chơi chưa rút xong")
 	ErrPlayerIsDone            = errors.New("đã tính rồi")
+	ErrYouCannotHit            = errors.New("bạn không thể rút thêm")
+	ErrYouCannotStand          = errors.New("bạn chưa thể úp bài")
 )

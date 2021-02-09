@@ -99,9 +99,16 @@ func (g *Game) Deal() error {
 	// split cards
 	g.dealer.AddCard(g.table[0])
 	g.dealer.AddCard(g.table[len(g.players)+1])
+	// g.dealer.AddCard(Card{id: 0})
+	// g.dealer.AddCard(Card{id: 10})
 	for i := 0; i < len(g.players); i++ {
+		// if i == 2 {
+		//   g.players[i].AddCard(Card{id: 13})
+		//   g.players[i].AddCard(Card{id: 26})
+		// } else {
 		g.players[i].AddCard(g.table[i+1])
 		g.players[i].AddCard(g.table[i+len(g.players)+2])
+		// }
 	}
 	g.table = g.table[len(g.players)*2+2:]
 	g.doneCnt.Store(uint32(len(g.players)))
@@ -242,14 +249,14 @@ func (g *Game) RemoveCard() (Card, error) {
 	return c, nil
 }
 
-func (g *Game) PlayerStand(*PlayerInGame) (err error) {
+func (g *Game) PlayerStand(pg *PlayerInGame) (err error) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 
 	if g.currentIdx < 0 {
 		return ErrPlayerNotFound
 	}
-	if g.currentIdx == len(g.players) {
+	if g.currentIdx >= len(g.players) {
 		err = g.dealer.Stand()
 	} else {
 		err = g.players[g.currentIdx].Stand()
@@ -260,20 +267,27 @@ func (g *Game) PlayerStand(*PlayerInGame) (err error) {
 func (g *Game) PlayerNext() (*PlayerInGame, error) {
 	g.mu.RLock()
 	var playPG *PlayerInGame
-	g.currentIdx++
-	if g.currentIdx < len(g.players) {
-		if err := g.players[g.currentIdx].Play(); err != nil {
-			g.mu.RUnlock()
-			return nil, err
+	for {
+		g.currentIdx++
+		if g.currentIdx < len(g.players) {
+			if g.players[g.currentIdx].IsDone() {
+				continue
+			}
+			if err := g.players[g.currentIdx].Play(); err != nil {
+				g.mu.RUnlock()
+				return nil, err
+			}
+			playPG = g.players[g.currentIdx]
+			break
+		} else {
+			g.status.Store(uint32(DealerPlaying))
+			if err := g.dealer.Play(); err != nil {
+				g.mu.RUnlock()
+				return nil, err
+			}
+			playPG = g.dealer
+			break
 		}
-		playPG = g.players[g.currentIdx]
-	} else {
-		g.status.Store(uint32(DealerPlaying))
-		if err := g.dealer.Play(); err != nil {
-			g.mu.RUnlock()
-			return nil, err
-		}
-		playPG = g.dealer
 	}
 	f := g.onPlayerPlayFunc
 	g.mu.RUnlock()
@@ -284,15 +298,17 @@ func (g *Game) PlayerNext() (*PlayerInGame, error) {
 	return playPG, nil
 }
 
-func (g *Game) Done(pg *PlayerInGame) (int64, error) {
+func (g *Game) Done(pg *PlayerInGame, force bool) (int64, error) {
 	if pg.IsDone() {
 		return pg.Reward(), nil
 	}
-	if st := pg.Status(); st != PlayerStood {
-		if st < PlayerStood {
-			return 0, ErrPlayerNotStandYet
-		} else {
-			return 0, ErrPlayerIsDone
+	if !force {
+		if st := pg.Status(); st != PlayerStood {
+			if st < PlayerStood {
+				return 0, ErrPlayerNotStandYet
+			} else {
+				return 0, ErrPlayerIsDone
+			}
 		}
 	}
 

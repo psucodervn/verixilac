@@ -27,7 +27,7 @@ func (h *Handler) sendMessage(chat *telebot.Chat, msg string, buttons ...InlineB
 	}
 	m, err := h.bot.Send(chat, msg, options)
 	if err != nil {
-		log.Err(err).Str("msg", msg).Msg("send message failed")
+		log.Err(err).Str("msg", msg).Str("receiver", GetUsername(chat)).Msg("send message failed")
 		// TODO: deal with nil
 	}
 	return m

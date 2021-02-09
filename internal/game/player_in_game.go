@@ -125,6 +125,10 @@ func (p *PlayerInGame) CanStand() bool {
 	return t != TypeTooLow
 }
 
+func (p *PlayerInGame) Type() ResultType {
+	return p.Cards().Type(p.isDealer.Load())
+}
+
 func ToPlayers(playersInGame []*PlayerInGame) []*Player {
 	ps := make([]*Player, len(playersInGame))
 	for i := range playersInGame {
