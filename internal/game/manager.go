@@ -312,19 +312,14 @@ func (m *Manager) Start(ctx context.Context, g *Game) error {
 	if _, err := g.PlayerNext(); err != nil {
 		return err
 	}
-
-	// m.mu.RLock()
-	// f := m.onPlayerPlayFunc
-	// m.mu.RUnlock()
-	// if f != nil {
-	//   f(g, g.Players()[0])
-	// }
 	return nil
 }
 
 func (m *Manager) FinishGame(ctx context.Context, g *Game) error {
 	for _, pg := range g.Players() {
-		g.Done(pg)
+		if _, err := g.Done(pg); err != nil {
+			return err
+		}
 	}
 
 	g.Dealer().SetCurrentGame(nil)
@@ -343,5 +338,17 @@ func (m *Manager) FinishGame(ctx context.Context, g *Game) error {
 	if f != nil {
 		f(g)
 	}
+	return nil
+}
+
+func (m *Manager) CancelGame(ctx context.Context, g *Game) error {
+	if g.Status() != Betting {
+		return ErrGameAlreadyStarted
+	}
+	for _, pg := range g.Players() {
+		pg.Player.SetCurrentGame(nil)
+	}
+	g.Room().SetCurrentGame(nil)
+	m.games.Delete(g.ID())
 	return nil
 }

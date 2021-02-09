@@ -137,13 +137,25 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 }
 
 func (h *Handler) doCancel(m *telebot.Message, onQuery bool) {
+	p := h.joinServer(m)
 	gameID := strings.TrimSpace(m.Payload)
 	ctx := h.ctx(m)
-	g := h.game.FindGame(ctx, gameID)
+	g, pg := h.findPlayerInGame(ctx, gameID, p.ID())
 	if g == nil {
 		h.sendMessage(m.Chat, "Không tìm thấy ván "+gameID)
 		return
 	}
+	if pg == nil || !pg.IsDealer() {
+		h.sendMessage(m.Chat, "Bạn không phải nhà cái")
+		return
+	}
+	if err := h.game.CancelGame(ctx, g); err != nil {
+		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+		return
+	}
+	h.broadcast(g.Room().Players(), pg.Name()+" đã huỷ ván này", true, InlineButton{
+		Text: "Tạo ván mới", Data: "/newgame",
+	})
 }
 
 func (h *Handler) onNewRoom(r *game.Room, creator *game.Player) {
@@ -210,7 +222,8 @@ func (h *Handler) doJoinRoom(m *telebot.Message, onQuery bool) {
 func (h *Handler) doPlay(m *telebot.Message, onQuery bool, hit bool) bool {
 	p := h.joinServer(m)
 	gameID := strings.TrimSpace(m.Payload)
-	g, pg := h.findPlayerInGame(m, gameID, p.ID())
+	ctx := h.ctx(m)
+	g, pg := h.findPlayerInGame(ctx, gameID, p.ID())
 	if g == nil {
 		h.sendMessage(m.Chat, "Không tìm thấy ván "+gameID)
 		return false
@@ -220,7 +233,6 @@ func (h *Handler) doPlay(m *telebot.Message, onQuery bool, hit bool) bool {
 		return false
 	}
 
-	ctx := h.ctx(m)
 	var err error
 	if hit {
 		err = h.game.PlayerHit(ctx, g, pg)
@@ -237,6 +249,7 @@ func (h *Handler) doPlay(m *telebot.Message, onQuery bool, hit bool) bool {
 func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
 	p := h.joinServer(m)
 	gameID := strings.TrimSpace(m.Payload)
+	ctx := h.ctx(m)
 	if len(gameID) == 0 {
 		if p.CurrentGame() == nil {
 			h.sendMessage(m.Chat, "Bạn chưa vào ván")
@@ -245,7 +258,7 @@ func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
 		gameID = p.CurrentGame().ID()
 	}
 
-	g, pg := h.findPlayerInGame(m, gameID, p.ID())
+	g, pg := h.findPlayerInGame(ctx, gameID, p.ID())
 	if g == nil {
 		h.sendMessage(m.Chat, "Không tìm thấy ván "+gameID)
 		return false
@@ -295,7 +308,8 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 		return
 	}
 	p := h.joinServer(m)
-	g, dealer := h.findPlayerInGame(m, ar[0], p.ID())
+	ctx := h.ctx(m)
+	g, dealer := h.findPlayerInGame(ctx, ar[0], p.ID())
 	if g == nil || dealer == nil || !dealer.IsDealer() {
 		h.sendMessage(m.Chat, "Sai thông tin")
 		return
