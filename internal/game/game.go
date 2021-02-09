@@ -115,7 +115,7 @@ func (g *Game) PlayerBet(p *Player, betAmount uint64) (*PlayerInGame, error) {
 		return nil, ErrGameAlreadyStarted
 	}
 
-	pg := g.findPlayer(p.ID())
+	pg := g.FindPlayer(p.ID())
 	if pg == nil {
 		pg = NewPlayerInGame(p, 0, false)
 		g.mu.Lock()
@@ -196,16 +196,17 @@ func (g *Game) FindPlayer(id string) *PlayerInGame {
 	return g.findPlayer(id)
 }
 
-func (g *Game) findPlayer(id string) *PlayerInGame {
-	if g.dealer.ID() == id {
-		return g.dealer
-	}
+func (g *Game) RemovePlayer(id string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	for i := range g.players {
-		if g.players[i].ID() == id {
-			return g.players[i]
+		if g.players[i].ID() != id {
+			continue
 		}
+		g.players = append(g.players[:i], g.players[i+1:]...)
+		return nil
 	}
-	return nil
+	return ErrPlayerNotFound
 }
 
 func (g *Game) Playing() bool {
@@ -309,6 +310,18 @@ func (g *Game) OnPlayerPlay(f func(pg *PlayerInGame)) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.onPlayerPlayFunc = f
+}
+
+func (g *Game) findPlayer(id string) *PlayerInGame {
+	if g.dealer.ID() == id {
+		return g.dealer
+	}
+	for i := range g.players {
+		if g.players[i].ID() == id {
+			return g.players[i]
+		}
+	}
+	return nil
 }
 
 func Compare(a, b *PlayerInGame) Result {

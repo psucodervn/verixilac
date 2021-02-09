@@ -232,12 +232,20 @@ func (m *Manager) FindGame(ctx context.Context, gameID string) *Game {
 	return p.(*Game)
 }
 
-func (m *Manager) PlayerBet(ctx context.Context, g *Game, p *Player, amount uint64) error {
-	pg, err := g.PlayerBet(p, amount)
-	if err != nil {
-		return err
+func (m *Manager) PlayerBet(ctx context.Context, g *Game, p *Player, amount uint64) (err error) {
+	var pg *PlayerInGame
+	if amount == 0 {
+		if err = g.RemovePlayer(p.ID()); err != nil {
+			return err
+		}
+	} else {
+		pg, err = g.PlayerBet(p, amount)
+		if err != nil {
+			return err
+		}
+		p.SetCurrentGame(g)
 	}
-	p.SetCurrentGame(g)
+
 	m.mu.RLock()
 	f := m.onPlayerBetFunc
 	m.mu.RUnlock()
