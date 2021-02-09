@@ -317,6 +317,10 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 		h.sendMessage(m.Chat, "Sai thông tin")
 		return
 	}
+	if !dealer.CanStand() {
+		h.sendMessage(m.Chat, "Bạn chưa đủ tẩy")
+		return
+	}
 	to := g.FindPlayer(ar[1])
 	if to == nil {
 		h.sendMessage(m.Chat, "Sai thông tin")

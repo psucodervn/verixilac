@@ -115,6 +115,16 @@ func (p *PlayerInGame) Reward() int64 {
 	return p.reward.Load()
 }
 
+func (p *PlayerInGame) CanHit() bool {
+	t := p.Cards().Type(p.isDealer.Load())
+	return t == TypeTooLow || (t == TypeNormal && p.Cards().Value() < 21)
+}
+
+func (p *PlayerInGame) CanStand() bool {
+	t := p.Cards().Type(p.isDealer.Load())
+	return t != TypeTooLow
+}
+
 func ToPlayers(playersInGame []*PlayerInGame) []*Player {
 	ps := make([]*Player, len(playersInGame))
 	for i := range playersInGame {

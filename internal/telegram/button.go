@@ -56,12 +56,16 @@ func MakeDealerPlayingButtons(g *game.Game, pg *game.PlayerInGame) []InlineButto
 }
 
 func MakePlayerButton(g *game.Game, pg *game.PlayerInGame) []InlineButton {
-	ar := []InlineButton{
-		{Text: "Rút thêm", Data: "/hit " + g.ID()},
-		{Text: "Thôi", Data: "/stand " + g.ID()},
+	var ar []InlineButton
+	if pg.CanHit() {
+		ar = append(ar, InlineButton{Text: "Rút thêm", Data: "/hit " + g.ID()})
 	}
-	if pg.IsDealer() {
-		ar[1].Data = "/endgame " + g.ID()
+	if pg.CanStand() {
+		if pg.IsDealer() {
+			ar = append(ar, InlineButton{Text: "Thôi", Data: "/endgame " + g.ID()})
+		} else {
+			ar = append(ar, InlineButton{Text: "Thôi", Data: "/stand " + g.ID()})
+		}
 	}
 	return ar
 }
