@@ -340,6 +340,13 @@ func (g *Game) findPlayer(id string) *PlayerInGame {
 	return nil
 }
 
+// AllPlayers includes dealer
+func (g *Game) AllPlayers() []*PlayerInGame {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return append(g.players, g.dealer)
+}
+
 func Compare(a, b *PlayerInGame) Result {
 	rta := a.Cards().Type(a.IsDealer())
 	rtb := b.Cards().Type(b.IsDealer())

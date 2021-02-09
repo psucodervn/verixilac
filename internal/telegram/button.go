@@ -49,11 +49,22 @@ func MakeDealerPrepareButtons(g *game.Game) []InlineButton {
 		{Text: "Huỷ", Data: "/cancel " + g.ID()},
 	}
 }
+
 func MakeDealerPlayingButtons(g *game.Game, pg *game.PlayerInGame) []InlineButton {
 	return []InlineButton{
 		{Text: "Lật bài của " + pg.Name(), Data: "/compare " + g.ID() + " " + pg.ID()},
 	}
 }
+
+// func MakeDealerPlayingButtons(g *game.Game) []InlineButton {
+//   var ar []InlineButton
+//   for _, p := range g.Players() {
+//     if !p.IsDone() {
+//       ar = append(ar, InlineButton{Text: "Lật bài của " + p.Name(), Data: "/compare " + g.ID() + " " + p.ID()})
+//     }
+//   }
+//   return ar
+// }
 
 func MakePlayerButton(g *game.Game, pg *game.PlayerInGame) []InlineButton {
 	var ar []InlineButton

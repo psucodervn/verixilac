@@ -103,11 +103,13 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	h.broadcast(append(g.Players(), g.Dealer()), "Chốt deal:\n\n"+g.PreparingBoard(), true)
+	h.broadcast(g.AllPlayers(), "Chốt deal:\n\n"+g.PreparingBoard(), true)
 
 	// send cards
 	for _, pg := range g.Players() {
-		h.sendMessage(ToTelebotChat(pg.ID()), "Bài của bạn: "+pg.Cards().String(false))
+		if !pg.IsDone() {
+			h.sendMessage(ToTelebotChat(pg.ID()), "Bài của bạn: "+pg.Cards().String(false))
+		}
 	}
 	h.sendMessage(ToTelebotChat(g.Dealer().ID()), "Bài của bạn: "+g.Dealer().Cards().String(false, true))
 
@@ -115,6 +117,18 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 	if err := h.game.Start(ctx, g); err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return
+	}
+
+	if !g.Finished() {
+		for _, pg := range g.Players() {
+			if !pg.IsDone() {
+				continue
+			}
+			msg := fmt.Sprintf("Bài của %s: %s\n%s đã thắng %dk",
+				pg.Name(), pg.Cards().String(false, false),
+				pg.Name(), pg.Reward())
+			h.broadcast(g.AllPlayers(), msg, false)
+		}
 	}
 
 	// FIXME: fake
@@ -298,12 +312,12 @@ func (h *Handler) joinServer(m *telebot.Message) *game.Player {
 }
 
 func (h *Handler) onPlayerStand(g *game.Game, pg *game.PlayerInGame) {
-	h.broadcast(g.Dealer(), pg.Name()+" đã úp bài", false, MakeDealerPlayingButtons(g, pg)...)
-	h.broadcast(g.Players(), pg.Name()+" đã úp bài", false)
+	// h.broadcast(g.Dealer(), pg.Name()+" đã úp bài", false)
+	// h.broadcast(g.AllPlayers(), pg.Name()+" đã úp bài", false)
 }
 
 func (h *Handler) onPlayerHit(g *game.Game, pg *game.PlayerInGame) {
-	players := FilterInGamePlayers(append(g.Players(), g.Dealer()), pg.ID())
+	players := FilterInGamePlayers(g.AllPlayers(), pg.ID())
 	h.broadcast(players, pg.Name()+" vừa rút thêm 1 lá", false)
 	h.broadcast(pg, "Bài của bạn: "+pg.Cards().String(false, pg.IsDealer()), true, MakePlayerButton(g, pg)...)
 }
@@ -366,16 +380,19 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 func (h *Handler) onGameFinish(g *game.Game) {
 	_ = h.game.SaveToStorage()
 	msg := "Kết quả ván chơi!\n\n" + g.ResultBoard()
-	h.broadcast(g.Dealer(), msg, false, MakeResultButtons(g)...)
-	h.broadcast(g.Players(), msg, false, MakeResultButtons(g)...)
+	h.broadcast(g.AllPlayers(), msg, false, MakeResultButtons(g)...)
 }
 
 func (h *Handler) onPlayerPlay(g *game.Game, pg *game.PlayerInGame) {
 	if pg.IsDealer() {
-		msg := "Thống kê ván hiện tại:\n" + g.PlayerBoard()
-		h.broadcast(g.Dealer(), msg, false)
+		for _, p := range g.Players() {
+			if p.IsDone() {
+				continue
+			}
+			msg := fmt.Sprintf("%s đang cầm %d lá", p.Name(), len(p.Cards()))
+			h.broadcast(g.Dealer(), msg, false, MakeDealerPlayingButtons(g, p)...)
+		}
 	}
-	all := append(g.Players(), g.Dealer())
 	h.broadcast(pg, "Tới lượt bạn: "+pg.Cards().String(false, pg.IsDealer()), false, MakePlayerButton(g, pg)...)
-	h.broadcast(FilterInGamePlayers(all, pg.ID()), "Tới lượt "+pg.Name(), false)
+	h.broadcast(FilterInGamePlayers(g.AllPlayers(), pg.ID()), "Tới lượt "+pg.Name(), false)
 }
