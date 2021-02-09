@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -36,6 +37,10 @@ var (
 		{
 			Text:        "room",
 			Description: "Xem thông tin phòng",
+		},
+		{
+			Text:        "rooms",
+			Description: "Xem danh sách phòng",
 		},
 		{
 			Text:        "help",
@@ -76,6 +81,7 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/endgame", h.CmdEndGame)
 	h.bot.Handle("/save", h.CmdSave)
 	h.bot.Handle("/room", h.CmdRoomInfo)
+	h.bot.Handle("/rooms", h.CmdListRoom)
 
 	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
 		log.Info().Interface("q", q).Msg("on query")
@@ -170,4 +176,20 @@ func (h *Handler) CmdRoomInfo(m *telebot.Message) {
 		return
 	}
 	h.sendMessage(m.Chat, r.Info())
+}
+
+func (h *Handler) CmdListRoom(m *telebot.Message) {
+	rooms, err := h.game.Rooms(h.ctx(m))
+	if err != nil {
+		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+		return
+	}
+	bf := bytes.NewBuffer(nil)
+	for _, r := range rooms {
+		bf.WriteString(fmt.Sprintf("Phòng %s:\n", r.ID()))
+		for _, p := range r.Players() {
+			bf.WriteString(fmt.Sprintf(" - %s (%+dk)\n", p.Name(), p.Balance()))
+		}
+	}
+	h.sendMessage(m.Chat, bf.String())
 }

@@ -389,3 +389,13 @@ func (m *Manager) CancelGame(ctx context.Context, g *Game) error {
 	m.games.Delete(g.ID())
 	return nil
 }
+
+func (m *Manager) Rooms(ctx context.Context) ([]*Room, error) {
+	var rs []*Room
+	m.rooms.Range(func(id, rr interface{}) bool {
+		r := rr.(*Room)
+		rs = append(rs, r)
+		return true
+	})
+	return rs, nil
+}
