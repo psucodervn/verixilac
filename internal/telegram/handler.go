@@ -335,24 +335,28 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	msg := fmt.Sprintf("Bài của %s: %s\n%s: %+dk",
+	msgDealer := fmt.Sprintf("Bài của %s: %s",
 		to.Name(), to.Cards().String(false, false),
-		to.Name(), -reward,
 	)
-	if onQuery {
-		h.editMessage(m, msg)
+
+	var msgPlayer string
+	if reward < 0 {
+		msgDealer += fmt.Sprintf("\n%s thắng và được cộng %dk", to.Name(), -reward)
+		msgPlayer = fmt.Sprintf("Cái lật bài bạn và thua. Bạn được cộng %dk", -reward)
+	} else if reward > 0 {
+		msgDealer += fmt.Sprintf("\n%s thua và bị trừ %dk", to.Name(), reward)
+		msgPlayer = fmt.Sprintf("Cái lật bài bạn và thắng. Bạn bị trừ %dk", reward)
 	} else {
-		h.sendMessage(ToTelebotChat(dealer.ID()), msg)
+		msgDealer += fmt.Sprintf("\n%s và cái hoà nhau", to.Name())
+		msgPlayer = fmt.Sprintf("Cái lật bài bạn và hoà. Bạn không bị mất tiền")
 	}
 
-	if reward < 0 {
-		msg = fmt.Sprintf("Cái lật bài bạn và thua. Bạn được cộng %dk", -reward)
-	} else if reward > 0 {
-		msg = fmt.Sprintf("Cái lật bài bạn và thắng. Bạn bị trừ %dk", reward)
+	if onQuery {
+		h.editMessage(m, msgDealer)
 	} else {
-		msg = fmt.Sprintf("Cái lật bài bạn và hoà. Bạn không bị mất tiền")
+		h.sendMessage(ToTelebotChat(dealer.ID()), msgDealer)
 	}
-	h.sendMessage(ToTelebotChat(to.ID()), msg)
+	h.sendMessage(ToTelebotChat(to.ID()), msgPlayer)
 }
 
 func (h *Handler) onGameFinish(g *game.Game) {
