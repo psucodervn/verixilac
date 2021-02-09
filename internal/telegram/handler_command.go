@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/tucnak/telebot.v2"
@@ -137,12 +138,14 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	_ = g
-	_ = ctx
-	botP1 := game.NewPlayer("123", "Test 1")
-	_ = h.game.PlayerBet(ctx, g, botP1, 50)
-	botP2 := game.NewPlayer("456", "Test 2")
-	_ = h.game.PlayerBet(ctx, g, botP2, 100)
+	if len(os.Getenv("TEST_ACCOUNT")) > 0 {
+		_ = g
+		_ = ctx
+		botP1 := game.NewPlayer("123", "Test 1")
+		_ = h.game.PlayerBet(ctx, g, botP1, 50)
+		botP2 := game.NewPlayer("456", "Test 2")
+		_ = h.game.PlayerBet(ctx, g, botP2, 100)
+	}
 }
 
 // CmdJoinRoom joins user to room

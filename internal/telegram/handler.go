@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -117,22 +118,24 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 	}
 
 	// FIXME: fake
-	m1 := &telebot.Message{ID: 123, Payload: g.ID(), Chat: &telebot.Chat{ID: 123, Username: "Test 1"}}
-	for {
-		ok := h.doStand(m1, true)
-		if ok {
-			break
+	if len(os.Getenv("TEST_ACCOUNT")) > 0 {
+		m1 := &telebot.Message{ID: 123, Payload: g.ID(), Chat: &telebot.Chat{ID: 123, Username: "Test 1"}}
+		for {
+			ok := h.doStand(m1, true)
+			if ok {
+				break
+			}
+			ok = h.doHit(m1, true)
 		}
-		ok = h.doHit(m1, true)
-	}
 
-	m2 := &telebot.Message{ID: 456, Payload: g.ID(), Chat: &telebot.Chat{ID: 456, Username: "Test 2"}}
-	for {
-		ok := h.doStand(m2, true)
-		if ok {
-			break
+		m2 := &telebot.Message{ID: 456, Payload: g.ID(), Chat: &telebot.Chat{ID: 456, Username: "Test 2"}}
+		for {
+			ok := h.doStand(m2, true)
+			if ok {
+				break
+			}
+			ok = h.doHit(m2, true)
 		}
-		ok = h.doHit(m2, true)
 	}
 }
 

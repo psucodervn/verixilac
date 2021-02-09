@@ -1,0 +1,7 @@
+data
+deploy
+.env
+coverage.out
+verixilac
+build.sh
+up.sh
