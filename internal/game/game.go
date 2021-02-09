@@ -19,6 +19,7 @@ type Game struct {
 	table      []Card
 	status     atomic.Uint32
 	doneCnt    atomic.Uint32
+	maxBet     atomic.Uint64
 	currentIdx int
 
 	onPlayerPlayFunc func(pg *PlayerInGame)
@@ -53,12 +54,13 @@ func (r Result) String() string {
 	}
 }
 
-func NewGame(dealer *Player, room *Room) *Game {
+func NewGame(dealer *Player, room *Room, maxBet uint64) *Game {
 	return &Game{
 		id:         xid.New().String(),
 		room:       room,
 		dealer:     NewPlayerInGame(dealer, 0, true),
 		currentIdx: -1,
+		maxBet:     *atomic.NewUint64(maxBet),
 	}
 }
 
@@ -122,6 +124,10 @@ func (g *Game) PlayerBet(p *Player, betAmount uint64) (*PlayerInGame, error) {
 		return nil, ErrGameAlreadyStarted
 	}
 
+	if betAmount > g.maxBet.Load() {
+		return nil, fmt.Errorf("bạn chỉ được bet tối đa %dk", g.maxBet.Load())
+	}
+
 	pg := g.FindPlayer(p.ID())
 	if pg == nil {
 		pg = NewPlayerInGame(p, 0, false)
@@ -130,6 +136,9 @@ func (g *Game) PlayerBet(p *Player, betAmount uint64) (*PlayerInGame, error) {
 		g.mu.Unlock()
 	}
 
+	if pg.BetAmount()+betAmount > g.maxBet.Load() {
+		return nil, fmt.Errorf("bạn chỉ được bet tối đa %dk", g.maxBet.Load())
+	}
 	pg.AddBet(betAmount)
 	return pg, nil
 }

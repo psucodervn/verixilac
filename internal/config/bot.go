@@ -2,7 +2,7 @@ package config
 
 type BotConfig struct {
 	Telegram TelegramConfig `split_words:"true"`
-	// Postgres PostgresConfig `split_words:"true"`
+	MaxBet   uint64         `split_words:"true" default:"200"`
 }
 
 type TelegramConfig struct {

@@ -5,9 +5,12 @@ import (
 	"sync"
 
 	"github.com/rs/zerolog/log"
+	"go.uber.org/atomic"
 )
 
 type Manager struct {
+	maxBet atomic.Uint64
+
 	players sync.Map
 	rooms   sync.Map
 	games   sync.Map
@@ -32,8 +35,10 @@ type OnPlayerHitFunc func(g *Game, p *PlayerInGame)
 type OnGameFinishFunc func(g *Game)
 type OnPlayerPlayFunc func(g *Game, pg *PlayerInGame)
 
-func NewManager() *Manager {
-	m := &Manager{}
+func NewManager(maxBet uint64) *Manager {
+	m := &Manager{
+		maxBet: *atomic.NewUint64(maxBet),
+	}
 	return m
 }
 
@@ -209,7 +214,7 @@ func (m *Manager) NewGame(room *Room, dealer *Player) (*Game, error) {
 		return nil, ErrGameIsExisted
 	}
 
-	g := NewGame(dealer, room)
+	g := NewGame(dealer, room, m.maxBet.Load())
 	dealer.SetCurrentGame(g)
 	room.SetCurrentGame(g)
 	m.games.Store(g.ID(), g)
@@ -398,4 +403,9 @@ func (m *Manager) Rooms(ctx context.Context) ([]*Room, error) {
 		return true
 	})
 	return rs, nil
+}
+
+func (m *Manager) SetMaxBet(maxBet uint64) uint64 {
+	m.maxBet.Store(maxBet)
+	return maxBet
 }
