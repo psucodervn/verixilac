@@ -1,8 +1,13 @@
 package config
 
+import (
+	"time"
+)
+
 type BotConfig struct {
 	Telegram TelegramConfig `split_words:"true"`
 	MaxBet   uint64         `split_words:"true" default:"200"`
+	Timeout  time.Duration  `split_words:"true" default:"1m"`
 }
 
 type TelegramConfig struct {

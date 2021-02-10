@@ -22,4 +22,5 @@ var (
 	ErrPlayerIsDone            = errors.New("đã tính rồi")
 	ErrYouCannotHit            = errors.New("bạn không thể rút thêm")
 	ErrYouCannotStand          = errors.New("bạn chưa thể úp bài")
+	ErrNotTimeout              = errors.New("chưa quá thời gian")
 )

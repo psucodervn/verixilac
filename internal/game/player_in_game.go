@@ -2,6 +2,7 @@ package game
 
 import (
 	"sync"
+	"time"
 
 	"go.uber.org/atomic"
 )
@@ -14,8 +15,21 @@ type PlayerInGame struct {
 	status    atomic.Uint32
 	reward    atomic.Int64
 	result    atomic.Uint32
+	lastHit   atomic.Int64
 
 	mu sync.RWMutex
+}
+
+func (p *PlayerInGame) SetStatus(status PlayerInGameStatus) {
+	p.status.Store(uint32(status))
+}
+
+func (p *PlayerInGame) LastHit() int64 {
+	return p.lastHit.Load()
+}
+
+func (p *PlayerInGame) SetLastHit(lastHit int64) {
+	p.lastHit.Store(lastHit)
 }
 
 type PlayerInGameStatus uint32
@@ -82,6 +96,7 @@ func (p *PlayerInGame) Play() error {
 		return ErrYouArePlayed
 	}
 	p.status.Store(uint32(PlayerPlaying))
+	p.lastHit.Store(time.Now().Unix())
 	return nil
 }
 

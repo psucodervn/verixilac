@@ -3,13 +3,15 @@ package game
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
 )
 
 type Manager struct {
-	maxBet atomic.Uint64
+	maxBet  atomic.Uint64
+	timeout atomic.Duration
 
 	players sync.Map
 	rooms   sync.Map
@@ -35,9 +37,10 @@ type OnPlayerHitFunc func(g *Game, p *PlayerInGame)
 type OnGameFinishFunc func(g *Game)
 type OnPlayerPlayFunc func(g *Game, pg *PlayerInGame)
 
-func NewManager(maxBet uint64) *Manager {
+func NewManager(maxBet uint64, timeout time.Duration) *Manager {
 	m := &Manager{
-		maxBet: *atomic.NewUint64(maxBet),
+		maxBet:  *atomic.NewUint64(maxBet),
+		timeout: *atomic.NewDuration(timeout),
 	}
 	return m
 }
@@ -214,7 +217,7 @@ func (m *Manager) NewGame(room *Room, dealer *Player) (*Game, error) {
 		return nil, ErrGameIsExisted
 	}
 
-	g := NewGame(dealer, room, m.maxBet.Load())
+	g := NewGame(dealer, room, m.maxBet.Load(), m.timeout.Load())
 	dealer.SetCurrentGame(g)
 	room.SetCurrentGame(g)
 	m.games.Store(g.ID(), g)
@@ -297,6 +300,7 @@ func (m *Manager) PlayerHit(ctx context.Context, g *Game, pg *PlayerInGame) erro
 		return err
 	}
 	pg.AddCard(c)
+	pg.SetLastHit(time.Now().Unix())
 
 	m.mu.RLock()
 	f := m.onPlayerHitFunc
@@ -408,4 +412,16 @@ func (m *Manager) Rooms(ctx context.Context) ([]*Room, error) {
 func (m *Manager) SetMaxBet(maxBet uint64) uint64 {
 	m.maxBet.Store(maxBet)
 	return maxBet
+}
+
+func (m *Manager) PlayerPass(ctx context.Context, g *Game) (*PlayerInGame, error) {
+	pg := g.CurrentPlaying()
+	if pg == nil {
+		return nil, ErrPlayerNotFound
+	}
+	if err := g.Pass(pg); err != nil {
+		return nil, err
+	}
+	m.CheckIfFinish(ctx, g)
+	return pg, nil
 }

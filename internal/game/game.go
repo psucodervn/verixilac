@@ -20,6 +20,7 @@ type Game struct {
 	status     atomic.Uint32
 	doneCnt    atomic.Uint32
 	maxBet     atomic.Uint64
+	timeout    atomic.Duration
 	currentIdx int
 
 	onPlayerPlayFunc func(pg *PlayerInGame)
@@ -54,13 +55,14 @@ func (r Result) String() string {
 	}
 }
 
-func NewGame(dealer *Player, room *Room, maxBet uint64) *Game {
+func NewGame(dealer *Player, room *Room, maxBet uint64, timeout time.Duration) *Game {
 	return &Game{
 		id:         xid.New().String(),
 		room:       room,
 		dealer:     NewPlayerInGame(dealer, 0, true),
 		currentIdx: -1,
 		maxBet:     *atomic.NewUint64(maxBet),
+		timeout:    *atomic.NewDuration(timeout),
 	}
 }
 
@@ -354,6 +356,32 @@ func (g *Game) AllPlayers() []*PlayerInGame {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return append(g.players, g.dealer)
+}
+
+func (g *Game) CurrentPlaying() *PlayerInGame {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.currentIdx < 0 {
+		return nil
+	} else if g.currentIdx < len(g.players) {
+		return g.players[g.currentIdx]
+	} else {
+		return g.dealer
+	}
+}
+
+func (g *Game) Pass(pg *PlayerInGame) error {
+	passed := time.Duration(time.Now().Unix()-pg.LastHit()) * time.Second
+	if passed < g.timeout.Load() {
+		return ErrNotTimeout
+	}
+	pg.SetStatus(PlayerStood)
+	if pg.IsDealer() {
+		g.status.Store(uint32(Finished))
+		return nil
+	}
+	_, err := g.PlayerNext()
+	return err
 }
 
 func Compare(a, b *PlayerInGame) Result {

@@ -35,6 +35,10 @@ var (
 			Description: "Rời phòng",
 		},
 		{
+			Text:        "pass",
+			Description: "Cho qua lượt",
+		},
+		{
 			Text:        "room",
 			Description: "Xem thông tin phòng",
 		},
@@ -82,6 +86,7 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/save", h.CmdSave)
 	h.bot.Handle("/room", h.CmdRoomInfo)
 	h.bot.Handle("/rooms", h.CmdListRoom)
+	h.bot.Handle("/pass", h.CmdPass)
 
 	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
 		log.Info().Interface("q", q).Msg("on query")
@@ -192,4 +197,20 @@ func (h *Handler) CmdListRoom(m *telebot.Message) {
 		}
 	}
 	h.sendMessage(m.Chat, bf.String())
+}
+
+func (h *Handler) CmdPass(m *telebot.Message) {
+	p := h.joinServer(m)
+	g := p.CurrentGame()
+	if g == nil {
+		h.sendMessage(m.Chat, "Không có thông tin ván")
+		return
+	}
+	pg, err := h.game.PlayerPass(h.ctx(m), g)
+	if err != nil {
+		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+		return
+	}
+	// h.broadcast(g.AllPlayers(), pg.Name() + " đã bị qua lượt", false)
+	log.Info().Str("game_id", g.ID()).Str("user_id", pg.ID()).Msg(pg.Name() + " đã bị qua lượt")
 }
