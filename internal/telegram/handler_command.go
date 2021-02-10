@@ -99,7 +99,7 @@ func (h *Handler) Start() (err error) {
 		p := h.joinServer(m)
 		if r := p.CurrentRoom(); r != nil {
 			ps := FilterPlayers(r.Players(), p.ID())
-			h.broadcast(ps, GetUsername(m.Chat)+": "+m.Text, false)
+			h.broadcast(ps, "🗣 "+GetUsername(m.Chat)+": "+m.Text, false)
 		}
 	})
 

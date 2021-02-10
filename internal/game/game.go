@@ -372,7 +372,11 @@ func (g *Game) CurrentPlaying() *PlayerInGame {
 
 func (g *Game) Pass(pg *PlayerInGame) error {
 	passed := time.Duration(time.Now().Unix()-pg.LastHit()) * time.Second
-	if passed < g.timeout.Load() {
+	need := g.timeout.Load()
+	if pg.IsDealer() {
+		need = need * 5
+	}
+	if passed < need {
 		return ErrNotTimeout
 	}
 	pg.SetStatus(PlayerStood)
