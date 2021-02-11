@@ -5,16 +5,16 @@ FROM golang:1.15-alpine AS builder
 ARG BINARY
 ARG DIR
 
-RUN apk update && apk add --no-cache git ca-certificates
+RUN apk update && apk add --no-cache git ca-certificates gcc g++
 
 WORKDIR $DIR
 COPY go.mod go.sum ./
 RUN go mod graph | grep -v '@.*@' | cut -d ' ' -f 2 | xargs go get -v
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $BINARY main.go
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -race -ldflags "-s -w" -o $BINARY main.go
 
-FROM scratch
+FROM alpine
 ARG BINARY
 ARG DIR
 
