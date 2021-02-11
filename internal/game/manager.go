@@ -394,6 +394,7 @@ func (m *Manager) CancelGame(ctx context.Context, g *Game) error {
 	if g.Status() != Betting {
 		return ErrGameAlreadyStarted
 	}
+	g.Dealer().SetCurrentGame(nil)
 	for _, pg := range g.Players() {
 		pg.Player.SetCurrentGame(nil)
 	}
