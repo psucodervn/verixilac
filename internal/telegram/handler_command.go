@@ -50,10 +50,6 @@ var (
 			Text:        "rooms",
 			Description: "Xem danh sách phòng",
 		},
-		{
-			Text:        "help",
-			Description: "Trợ giúp",
-		},
 	}
 )
 
@@ -92,6 +88,7 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/rooms", h.CmdListRoom)
 	h.bot.Handle("/pass", h.CmdPass)
 	h.bot.Handle("/status", h.CmdStatus)
+	h.bot.Handle("/admin", h.CmdAdmin)
 
 	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
 		log.Info().Interface("q", q).Msg("on query")
@@ -160,7 +157,7 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 	}
 	g, err := h.game.NewGame(r, p)
 	if err != nil {
-		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+		h.sendMessage(m.Chat, "Không thể tạo ván mới: "+err.Error())
 		return
 	}
 

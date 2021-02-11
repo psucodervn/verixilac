@@ -18,6 +18,7 @@ type (
 		Name    string `json:"name"`
 		Balance int64  `json:"balance"`
 		RoomID  string `json:"roomId,omitempty"`
+		IsAdmin bool   `json:"isAdmin"`
 	}
 	stData struct {
 		Rooms   map[string]stRoom   `json:"rooms"`
@@ -43,6 +44,7 @@ func (m *Manager) LoadFromStorage() error {
 	}
 	for _, stP := range data.Players {
 		p := NewPlayer(stP.ID, stP.Name)
+		p.SetIsAdmin(stP.IsAdmin)
 		p.AddBalance(stP.Balance)
 		m.players.Store(p.ID(), p)
 		if len(stP.RoomID) > 0 {

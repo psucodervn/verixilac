@@ -13,10 +13,11 @@ type Manager struct {
 	maxBet  atomic.Uint64
 	timeout atomic.Duration
 
-	players sync.Map
-	rooms   sync.Map
-	games   sync.Map
-	mu      sync.RWMutex
+	players       sync.Map
+	rooms         sync.Map
+	games         sync.Map
+	canCreateGame atomic.Bool
+	mu            sync.RWMutex
 
 	onNewRoomFunc        OnNewRoomFunc
 	onNewGameFunc        OnNewGameFunc
@@ -39,8 +40,9 @@ type OnPlayerPlayFunc func(g *Game, pg *PlayerInGame)
 
 func NewManager(maxBet uint64, timeout time.Duration) *Manager {
 	m := &Manager{
-		maxBet:  *atomic.NewUint64(maxBet),
-		timeout: *atomic.NewDuration(timeout),
+		maxBet:        *atomic.NewUint64(maxBet),
+		timeout:       *atomic.NewDuration(timeout),
+		canCreateGame: *atomic.NewBool(true),
 	}
 	return m
 }
@@ -49,9 +51,7 @@ func (m *Manager) PlayerRegister(ctx context.Context, id string, name string) *P
 	pp, ok := m.players.Load(id)
 	if !ok || pp == nil {
 		pp = NewPlayer(id, name)
-		m.mu.Lock()
 		m.players.Store(id, pp)
-		m.mu.Unlock()
 		log.Ctx(ctx).Debug().Msg("player start using bot")
 	}
 	return pp.(*Player)
@@ -215,6 +215,9 @@ func (m *Manager) getRoom(ctx context.Context, id string) *Room {
 func (m *Manager) NewGame(room *Room, dealer *Player) (*Game, error) {
 	if room.CurrentGame() != nil {
 		return nil, ErrGameIsExisted
+	}
+	if !m.canCreateGame.Load() {
+		return nil, ErrServerWillDeploy
 	}
 
 	g := NewGame(dealer, room, m.maxBet.Load(), m.timeout.Load())
@@ -424,4 +427,14 @@ func (m *Manager) PlayerPass(ctx context.Context, g *Game) (*PlayerInGame, error
 	}
 	m.CheckIfFinish(ctx, g)
 	return pg, nil
+}
+
+func (m *Manager) Pause(ctx context.Context) error {
+	m.canCreateGame.Store(false)
+	return nil
+}
+
+func (m *Manager) Resume(ctx context.Context) error {
+	m.canCreateGame.Store(true)
+	return nil
 }

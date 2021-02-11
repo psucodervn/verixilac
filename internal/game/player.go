@@ -10,6 +10,7 @@ type Player struct {
 	id          string
 	name        string
 	balance     atomic.Int64
+	isAdmin     atomic.Bool
 	currentRoom *Room
 	currentGame *Game
 
@@ -30,6 +31,14 @@ func (p *Player) Name() string {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.name
+}
+
+func (p *Player) IsAdmin() bool {
+	return p.isAdmin.Load()
+}
+
+func (p *Player) SetIsAdmin(isAdmin bool) {
+	p.isAdmin.Store(isAdmin)
 }
 
 func (p *Player) CurrentRoom() *Room {
