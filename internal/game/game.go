@@ -200,10 +200,10 @@ func (g *Game) ResultBoard() string {
 		bf.WriteString(fmt.Sprintf("\n  - %s: %s", p.Name(), p.Cards().String(false, false)))
 	}
 
-	bf.WriteString(fmt.Sprintf("\n\nTiền thưởng:\n\nNhà cái (%s): %+dk\n", g.dealer.Name(), g.dealer.Reward()))
+	bf.WriteString(fmt.Sprintf("\n\nTiền thưởng:\n\nNhà cái (%s): %+dk (%+dk)\n", g.dealer.Name(), g.dealer.Reward(), g.dealer.Balance()))
 	bf.WriteString(fmt.Sprintf("Người chơi:"))
 	for _, p := range g.players {
-		bf.WriteString(fmt.Sprintf("\n  - %s: %+dk", p.Name(), p.Reward()))
+		bf.WriteString(fmt.Sprintf("\n  - %s: %+dk (%+dk)", p.Name(), p.Reward(), p.Balance()))
 	}
 	return bf.String()
 }

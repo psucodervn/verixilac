@@ -15,6 +15,10 @@ import (
 var (
 	commands = []telebot.Command{
 		{
+			Text:        "status",
+			Description: "Thông tin người chơi",
+		},
+		{
 			Text:        "newgame",
 			Description: "Tạo ván mới",
 		},
@@ -87,6 +91,7 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/room", h.CmdRoomInfo)
 	h.bot.Handle("/rooms", h.CmdListRoom)
 	h.bot.Handle("/pass", h.CmdPass)
+	h.bot.Handle("/status", h.CmdStatus)
 
 	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
 		log.Info().Interface("q", q).Msg("on query")
@@ -109,6 +114,16 @@ func (h *Handler) Start() (err error) {
 
 func (h *Handler) CmdStart(m *telebot.Message) {
 	h.joinServer(m)
+}
+
+func (h *Handler) CmdStatus(m *telebot.Message) {
+	p := h.joinServer(m)
+	msg := fmt.Sprintf(`Thông tin của bạn:
+- ID: %s
+- Name: %s
+- Balance: %dk
+`, p.ID(), p.Name(), p.Balance())
+	h.sendMessage(m.Chat, msg)
 }
 
 func (h *Handler) CmdSave(m *telebot.Message) {
