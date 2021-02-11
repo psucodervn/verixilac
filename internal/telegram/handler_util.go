@@ -42,7 +42,11 @@ func (h *Handler) editMessage(m *telebot.Message, msg string, buttons ...InlineB
 	}
 	m, err := h.bot.Edit(m, msg, options)
 	if err != nil {
-		log.Err(err).Str("receiver", GetUsername(m.Chat)).Msg("edit message failed")
+		l := log.Err(err)
+		if m != nil {
+			l = l.Str("receiver", GetUsername(m.Chat))
+		}
+		l.Msg("edit message failed")
 		// TODO: deal with nil
 	}
 	return m
@@ -90,12 +94,17 @@ func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, button
 	}
 }
 
-func (h *Handler) findPlayerInGame(ctx context.Context, gameID string, playerID string) (*game.Game, *game.PlayerInGame) {
-	g := h.game.FindGame(ctx, gameID)
+func (h *Handler) findPlayerInGame(m *telebot.Message, gameID string, playerID string) (*game.Game, *game.PlayerInGame) {
+	g := h.game.FindGame(h.ctx(m), gameID)
 	if g == nil {
+		h.sendMessage(m.Chat, "Không tìm thấy ván "+gameID)
 		return nil, nil
 	}
 	pg := g.FindPlayer(playerID)
+	if pg == nil {
+		h.sendMessage(m.Chat, "Không tìm thấy người chơi "+playerID)
+		return g, nil
+	}
 	return g, pg
 }
 

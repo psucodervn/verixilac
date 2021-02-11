@@ -66,10 +66,14 @@ func MakeDealerPlayingButtons(g *game.Game, pg *game.PlayerInGame) []InlineButto
 //   return ar
 // }
 
-func MakePlayerButton(g *game.Game, pg *game.PlayerInGame) []InlineButton {
+func MakePlayerButton(g *game.Game, pg *game.PlayerInGame, force bool) []InlineButton {
 	var ar []InlineButton
 	if pg.CanHit() {
-		ar = append(ar, InlineButton{Text: "Rút thêm", Data: "/hit " + g.ID()})
+		s := ""
+		if force {
+			s = " force"
+		}
+		ar = append(ar, InlineButton{Text: "Rút thêm", Data: "/hit " + g.ID() + s})
 	}
 	if pg.CanStand() {
 		if pg.IsDealer() {
