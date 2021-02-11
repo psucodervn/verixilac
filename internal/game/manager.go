@@ -217,7 +217,7 @@ func (m *Manager) NewGame(room *Room, dealer *Player) (*Game, error) {
 		return nil, ErrGameIsExisted
 	}
 	if !m.canCreateGame.Load() {
-		return nil, ErrServerWillDeploy
+		return nil, ErrServerMaintenance
 	}
 
 	g := NewGame(dealer, room, m.maxBet.Load(), m.timeout.Load())

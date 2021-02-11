@@ -24,5 +24,5 @@ var (
 	ErrYouCannotStand          = errors.New("bạn chưa thể úp bài")
 	ErrNotTimeout              = errors.New("chưa quá thời gian")
 	ErrCannotCreateGame        = errors.New("không thể tạo ván mới")
-	ErrServerWillDeploy        = errors.New("server chuẩn bị deploy")
+	ErrServerMaintenance       = errors.New("server đang bảo trì")
 )
