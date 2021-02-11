@@ -263,6 +263,9 @@ func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return false
 	}
+	if onQuery {
+		_, _ = h.bot.EditReplyMarkup(m, nil)
+	}
 	return true
 }
 
@@ -277,6 +280,9 @@ func (h *Handler) doStand(m *telebot.Message, onQuery bool) bool {
 	if err := h.game.PlayerStand(h.ctx(m), g, pg); err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return false
+	}
+	if onQuery {
+		_, _ = h.bot.EditReplyMarkup(m, nil)
 	}
 	return true
 }
