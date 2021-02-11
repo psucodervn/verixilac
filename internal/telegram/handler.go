@@ -400,3 +400,12 @@ func (h *Handler) onPlayerPlay(g *game.Game, pg *game.PlayerInGame) {
 	h.broadcast(pg, "Tới lượt bạn: "+pg.Cards().String(false, pg.IsDealer()), false, MakePlayerButton(g, pg, false)...)
 	h.broadcast(FilterInGamePlayers(g.AllPlayers(), pg.ID()), "Tới lượt "+pg.Name(), false)
 }
+
+func (h *Handler) sendChat(receivers []*game.Player, msg string) {
+	for _, p := range receivers {
+		_, err := h.bot.Send(ToTelebotChat(p.ID()), msg)
+		if err != nil {
+			log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
+		}
+	}
+}
