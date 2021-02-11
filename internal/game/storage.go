@@ -83,6 +83,7 @@ func (m *Manager) SaveToStorage() error {
 			ID:      p.ID(),
 			Name:    p.Name(),
 			Balance: p.Balance(),
+			IsAdmin: p.IsAdmin(),
 		}
 		if p.CurrentRoom() != nil {
 			stP.RoomID = p.CurrentRoom().ID()
