@@ -86,7 +86,7 @@ func (cs Cards) Value() int {
 	if aCnt == 0 {
 		return sum
 	}
-	if sum >= 12 {
+	if sum >= 12 || len(cs) >= 4 {
 		return sum + aCnt
 	}
 	if sum+11+(aCnt-1) <= 21 {

@@ -64,6 +64,7 @@ func TestCards_Value(t *testing.T) {
 		{cs: NewCards(0, 0, 10), want: 21},
 		{cs: NewCards(0, 0, 5, 6), want: 15},
 		{cs: NewCards(5, 6), want: 13},
+		{cs: NewCards(2, 2, 3, 0), want: 11},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

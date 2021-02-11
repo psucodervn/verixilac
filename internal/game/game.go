@@ -414,9 +414,17 @@ func GetReward(a, b *PlayerInGame) int64 {
 	rta := a.Cards().Type(a.IsDealer())
 	rtb := b.Cards().Type(b.IsDealer())
 	if rta == TypeDoubleBlackJack {
-		return int64(b.BetAmount() * 2)
+		if a.IsDealer() {
+			return int64(b.BetAmount())
+		} else {
+			return int64(b.BetAmount() * 2)
+		}
 	} else if rtb == TypeDoubleBlackJack {
-		return -int64(b.BetAmount() * 2)
+		if b.IsDealer() {
+			return -int64(b.BetAmount())
+		} else {
+			return -int64(b.BetAmount() * 2)
+		}
 	} else if cp == Win {
 		return int64(b.BetAmount())
 	} else {
