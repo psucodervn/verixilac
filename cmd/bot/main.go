@@ -25,8 +25,9 @@ func run(cmd *cobra.Command, args []string) {
 	cfg := config.MustReadBotConfig()
 
 	bot, err := telebot.NewBot(telebot.Settings{
-		Token:  cfg.Telegram.BotToken,
-		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
+		Token:       cfg.Telegram.BotToken,
+		Poller:      &telebot.LongPoller{Timeout: 10 * time.Second},
+		Synchronous: true,
 	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to telegram bot")
