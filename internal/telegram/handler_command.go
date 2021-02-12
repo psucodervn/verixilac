@@ -148,6 +148,9 @@ func (h *Handler) CmdNewGame(m *telebot.Message) {
 }
 
 func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	p := h.joinServer(m)
 	ctx := h.ctx(m)
 	r := p.CurrentRoom()
