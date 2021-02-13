@@ -94,6 +94,29 @@ func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, button
 	}
 }
 
+func (h *Handler) broadcastDeal(players []*game.Player, msg string, edit bool, buttons ...InlineButton) {
+	options := &telebot.SendOptions{
+		ReplyMarkup: &telebot.ReplyMarkup{
+			InlineKeyboard: ToTelebotInlineButtons(buttons),
+		},
+	}
+	for _, p := range players {
+		var m *telebot.Message
+		var err error
+		pm, ok := h.dealMessages.Load(p.ID())
+		if edit && ok && pm != nil {
+			m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
+		} else {
+			m, err = h.bot.Send(ToTelebotChat(p.ID()), msg, options)
+		}
+		if err != nil {
+			log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
+		} else {
+			h.dealMessages.Store(p.ID(), m)
+		}
+	}
+}
+
 func (h *Handler) findPlayerInGame(m *telebot.Message, gameID string, playerID string) (*game.Game, *game.PlayerInGame) {
 	g := h.game.FindGame(h.ctx(m), gameID)
 	if g == nil {

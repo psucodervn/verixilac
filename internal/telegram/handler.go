@@ -19,6 +19,7 @@ type Handler struct {
 	bot  *telebot.Bot
 
 	gameMessages sync.Map
+	dealMessages sync.Map
 
 	mu sync.RWMutex
 }
@@ -103,7 +104,7 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	h.broadcast(g.AllPlayers(), "Chốt deal:\n\n"+g.PreparingBoard(), true)
+	h.broadcastDeal(g.Room().Players(), "Chốt deal:\n\n"+g.PreparingBoard(), true)
 
 	// send cards
 	for _, pg := range g.Players() {
@@ -194,11 +195,11 @@ func (h *Handler) onNewGame(r *game.Room, g *game.Game) {
 
 	// send to dealer
 	d := g.Dealer()
-	h.broadcast(d.Player, msg, false, MakeDealerPrepareButtons(g)...)
+	h.broadcastDeal([]*game.Player{d.Player}, msg, false, MakeDealerPrepareButtons(g)...)
 
 	// send to members
 	players := FilterPlayers(r.Players(), d.ID())
-	h.broadcast(players, msg, false, MakeBetButtons(g)...)
+	h.broadcastDeal(players, msg, false, MakeBetButtons(g)...)
 }
 
 func (h *Handler) onPlayerJoinRoom(r *game.Room, p *game.Player) {
@@ -209,11 +210,11 @@ func (h *Handler) onPlayerJoinRoom(r *game.Room, p *game.Player) {
 func (h *Handler) onPlayerBet(g *game.Game, p *game.PlayerInGame) {
 	msg := "Bắt đầu ván mới, hãy tham gia ngay!\n\n" + g.PreparingBoard()
 	dealer := g.Dealer()
-	h.broadcast(dealer.Player, msg, true, MakeDealerPrepareButtons(g)...)
+	h.broadcastDeal([]*game.Player{dealer.Player}, msg, true, MakeDealerPrepareButtons(g)...)
 
 	r := g.Room()
 	players := FilterPlayers(r.Players(), dealer.ID())
-	h.broadcast(players, msg, true, MakeBetButtons(g)...)
+	h.broadcastDeal(players, msg, true, MakeBetButtons(g)...)
 }
 
 func (h *Handler) doJoinRoom(m *telebot.Message, onQuery bool) {
