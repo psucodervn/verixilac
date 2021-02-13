@@ -391,7 +391,7 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 func (h *Handler) onGameFinish(g *game.Game) {
 	_ = h.game.SaveToStorage()
 	msg := "Kết quả ván chơi!\n\n" + g.ResultBoard()
-	h.broadcast(g.AllPlayers(), msg, false, MakeResultButtons(g)...)
+	h.broadcast(g.Room().Players(), msg, false, MakeResultButtons(g)...)
 }
 
 func (h *Handler) onPlayerPlay(g *game.Game, pg *game.PlayerInGame) {
