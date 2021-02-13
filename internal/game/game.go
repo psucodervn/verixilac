@@ -271,8 +271,14 @@ func (g *Game) PlayerStand(pg *PlayerInGame) (err error) {
 		return ErrPlayerNotFound
 	}
 	if g.currentIdx >= len(g.players) {
+		if pg.ID() != g.dealer.ID() {
+			return ErrYouNotPlaying
+		}
 		err = g.dealer.Stand()
 	} else {
+		if pg.ID() != g.players[g.currentIdx].ID() {
+			return ErrYouNotPlaying
+		}
 		err = g.players[g.currentIdx].Stand()
 	}
 	return err
