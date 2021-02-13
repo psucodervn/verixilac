@@ -217,6 +217,9 @@ func (g *Game) FindPlayer(id string) *PlayerInGame {
 func (g *Game) RemovePlayer(id string) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	if Status(g.status.Load()) != Betting {
+		return ErrGameAlreadyStarted
+	}
 	for i := range g.players {
 		if g.players[i].ID() != id {
 			continue
