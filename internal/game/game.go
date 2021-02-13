@@ -2,8 +2,9 @@ package game
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"sync"
 	"time"
 
@@ -94,11 +95,12 @@ func (g *Game) Deal() error {
 		g.table[i] = Card{id: i}
 	}
 
-	// TODO: use crypto/rand
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(52, func(i, j int) {
+	// shuffle cards
+	for i := 52 - 1; i > 0; i-- {
+		bj, _ := rand.Int(rand.Reader, big.NewInt(int64(i)))
+		j := bj.Int64()
 		g.table[i], g.table[j] = g.table[j], g.table[i]
-	})
+	}
 
 	// split cards
 	g.dealer.AddCard(g.table[0])
