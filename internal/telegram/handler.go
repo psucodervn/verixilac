@@ -371,13 +371,13 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 	var msgPlayer string
 	if reward < 0 {
 		msgDealer += fmt.Sprintf("\n%s thắng và được cộng %dk", to.Name(), -reward)
-		msgPlayer = fmt.Sprintf("Cái lật bài bạn và thua. Bạn được cộng %dk", -reward)
+		msgPlayer = fmt.Sprintf("🤑 Cái lật bài bạn và thua. Bạn được cộng %dk", -reward)
 	} else if reward > 0 {
 		msgDealer += fmt.Sprintf("\n%s thua và bị trừ %dk", to.Name(), reward)
-		msgPlayer = fmt.Sprintf("Cái lật bài bạn và thắng. Bạn bị trừ %dk", reward)
+		msgPlayer = fmt.Sprintf("🔻 Cái lật bài bạn và thắng. Bạn bị trừ %dk", reward)
 	} else {
 		msgDealer += fmt.Sprintf("\n%s và cái hoà nhau", to.Name())
-		msgPlayer = fmt.Sprintf("Cái lật bài bạn và hoà. Bạn không bị mất tiền")
+		msgPlayer = fmt.Sprintf("🤝 Cái lật bài bạn và hoà. Bạn không bị mất tiền")
 	}
 
 	if onQuery {

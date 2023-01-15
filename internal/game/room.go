@@ -3,6 +3,7 @@ package game
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"sync"
 )
 
@@ -96,11 +97,20 @@ func (r *Room) RemovePlayer(p *Player) {
 
 func (r *Room) Info() string {
 	r.mu.RLock()
-	defer r.mu.RUnlock()
+	ps := make([]*Player, 0, len(r.players))
+	for i := range r.players {
+		ps = append(ps, r.players[i])
+	}
+	r.mu.RUnlock()
+
+	sort.Slice(ps, func(i, j int) bool {
+		return ps[i].Balance() > ps[j].Balance()
+	})
+
 	bf := bytes.NewBuffer(nil)
 	bf.WriteString("Phòng hiện tại: " + r.id)
 	bf.WriteString("\nThành viên:\n")
-	for _, p := range r.players {
+	for _, p := range ps {
 		bf.WriteString(fmt.Sprintf(" - %s: %+dk\n", p.Name(), p.Balance()))
 	}
 	return bf.String()
