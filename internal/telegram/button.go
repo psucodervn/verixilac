@@ -34,10 +34,10 @@ func ToTelebotInlineButtons(bs []InlineButton) [][]telebot.InlineButton {
 
 func MakeBetButtons(g *game.Game) []InlineButton {
 	return []InlineButton{
-		{Text: "10k", Data: "/bet " + g.ID() + " 10"},
-		{Text: "20k", Data: "/bet " + g.ID() + " 20"},
+		// {Text: "10k", Data: "/bet " + g.ID() + " 10"},
+		// {Text: "20k", Data: "/bet " + g.ID() + " 20"},
 		{Text: "50k", Data: "/bet " + g.ID() + " 50"},
-		{Text: "100k", Data: "/bet " + g.ID() + " 100", Row: 1},
+		{Text: "100k", Data: "/bet " + g.ID() + " 100"},
 		{Text: "200k", Data: "/bet " + g.ID() + " 200", Row: 1},
 		{Text: "Rút lui", Data: "/bet " + g.ID() + " 0", Row: 1},
 	}
