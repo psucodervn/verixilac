@@ -1,7 +1,7 @@
 ARG BINARY=verixilac
 ARG DIR=/app
 
-FROM golang:1.15-alpine AS builder
+FROM golang:1.18-alpine AS builder
 ARG BINARY
 ARG DIR
 
@@ -12,7 +12,7 @@ COPY go.mod go.sum ./
 RUN go mod graph | grep -v '@.*@' | cut -d ' ' -f 2 | xargs go get -v
 
 COPY . .
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -race -ldflags "-s -w" -o $BINARY main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o $BINARY main.go
 
 FROM alpine
 ARG BINARY
