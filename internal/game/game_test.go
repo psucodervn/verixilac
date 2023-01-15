@@ -86,9 +86,9 @@ func TestGetReward(t *testing.T) {
 
 func TestGame_Deal(t *testing.T) {
 	g := &Game{
-		dealer: NewPlayerInGame(NewPlayer("1", "1"), 0, true),
+		dealer: NewPlayerInGame(NewPlayer("1", "1", 0), 0, true),
 		players: []*PlayerInGame{
-			NewPlayerInGame(NewPlayer("2", "2"), 10, false),
+			NewPlayerInGame(NewPlayer("2", "2", 0), 10, false),
 		},
 	}
 	if err := g.Deal(); err != nil {

@@ -167,9 +167,9 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 	if len(os.Getenv("TEST_ACCOUNT")) > 0 {
 		_ = g
 		_ = ctx
-		botP1 := game.NewPlayer("123", "Test 1")
+		botP1 := game.NewPlayer("123", "Test 1", 1000)
 		_ = h.game.PlayerBet(ctx, g, botP1, 50)
-		botP2 := game.NewPlayer("456", "Test 2")
+		botP2 := game.NewPlayer("456", "Test 2", 2000)
 		_ = h.game.PlayerBet(ctx, g, botP2, 100)
 	}
 }

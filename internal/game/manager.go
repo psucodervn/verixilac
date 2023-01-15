@@ -53,7 +53,7 @@ func NewManager(maxBet uint64, minDeal uint64, timeout time.Duration) *Manager {
 func (m *Manager) PlayerRegister(ctx context.Context, id string, name string) *Player {
 	pp, ok := m.players.Load(id)
 	if !ok || pp == nil {
-		pp = NewPlayer(id, name)
+		pp = NewPlayer(id, name, 0)
 		m.players.Store(id, pp)
 		log.Ctx(ctx).Debug().Msg("player start using bot")
 	}

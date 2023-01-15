@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"reflect"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/tucnak/telebot.v2"
@@ -71,27 +72,37 @@ func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, button
 		return
 	}
 
+	wg := sync.WaitGroup{}
 	for _, p := range recvs {
-		// log.Debug().Str("id", p.ID()).Msg("will send to")
-		var m *telebot.Message
-		var err error
-		options := &telebot.SendOptions{
-			ReplyMarkup: &telebot.ReplyMarkup{
-				InlineKeyboard: ToTelebotInlineButtons(buttons),
-			},
-		}
-		pm, ok := h.gameMessages.Load(p.ID())
-		if edit && ok && pm != nil {
-			m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
-		} else {
-			m, err = h.bot.Send(ToTelebotChat(p.ID()), msg, options)
-		}
-		if err != nil {
-			log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
-		} else {
-			h.gameMessages.Store(p.ID(), m)
-		}
+		wg.Add(1)
+		p := p
+
+		go func() {
+			defer wg.Done()
+
+			// log.Debug().Str("id", p.ID()).Msg("will send to")
+			var m *telebot.Message
+			var err error
+			options := &telebot.SendOptions{
+				ReplyMarkup: &telebot.ReplyMarkup{
+					InlineKeyboard: ToTelebotInlineButtons(buttons),
+				},
+			}
+			pm, ok := h.gameMessages.Load(p.ID())
+			if edit && ok && pm != nil {
+				m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
+			} else {
+				m, err = h.bot.Send(ToTelebotChat(p.ID()), msg, options)
+			}
+			if err != nil {
+				log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
+			} else {
+				h.gameMessages.Store(p.ID(), m)
+			}
+		}()
 	}
+
+	wg.Wait()
 }
 
 func (h *Handler) broadcastDeal(players []*game.Player, msg string, edit bool, buttons ...InlineButton) {
@@ -100,21 +111,32 @@ func (h *Handler) broadcastDeal(players []*game.Player, msg string, edit bool, b
 			InlineKeyboard: ToTelebotInlineButtons(buttons),
 		},
 	}
+
+	wg := sync.WaitGroup{}
 	for _, p := range players {
-		var m *telebot.Message
-		var err error
-		pm, ok := h.dealMessages.Load(p.ID())
-		if edit && ok && pm != nil {
-			m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
-		} else {
-			m, err = h.bot.Send(ToTelebotChat(p.ID()), msg, options)
-		}
-		if err != nil {
-			log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
-		} else {
-			h.dealMessages.Store(p.ID(), m)
-		}
+		wg.Add(1)
+		p := p
+
+		go func() {
+			defer wg.Done()
+
+			var m *telebot.Message
+			var err error
+			pm, ok := h.dealMessages.Load(p.ID())
+			if edit && ok && pm != nil {
+				m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
+			} else {
+				m, err = h.bot.Send(ToTelebotChat(p.ID()), msg, options)
+			}
+			if err != nil {
+				log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
+			} else {
+				h.dealMessages.Store(p.ID(), m)
+			}
+		}()
 	}
+
+	wg.Wait()
 }
 
 func (h *Handler) findPlayerInGame(m *telebot.Message, gameID string, playerID string) (*game.Game, *game.PlayerInGame) {

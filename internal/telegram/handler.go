@@ -409,10 +409,19 @@ func (h *Handler) onPlayerPlay(g *game.Game, pg *game.PlayerInGame) {
 }
 
 func (h *Handler) sendChat(receivers []*game.Player, msg string) {
+	wg := sync.WaitGroup{}
 	for _, p := range receivers {
-		_, err := h.bot.Send(ToTelebotChat(p.ID()), msg)
-		if err != nil {
-			log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
-		}
+		wg.Add(1)
+		p := p
+
+		go func() {
+			defer wg.Done()
+			_, err := h.bot.Send(ToTelebotChat(p.ID()), msg)
+			if err != nil {
+				log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
+			}
+		}()
 	}
+
+	wg.Wait()
 }

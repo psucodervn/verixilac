@@ -17,8 +17,10 @@ type Player struct {
 	mu sync.RWMutex
 }
 
-func NewPlayer(id string, name string) *Player {
-	return &Player{id: id, name: name}
+func NewPlayer(id string, name string, initialBalance int64) *Player {
+	p := &Player{id: id, name: name}
+	p.balance.Store(initialBalance)
+	return p
 }
 
 func (p *Player) ID() string {

@@ -43,9 +43,8 @@ func (m *Manager) LoadFromStorage() error {
 		m.rooms.Store(r.ID(), r)
 	}
 	for _, stP := range data.Players {
-		p := NewPlayer(stP.ID, stP.Name)
+		p := NewPlayer(stP.ID, stP.Name, stP.Balance)
 		p.SetIsAdmin(stP.IsAdmin)
-		p.AddBalance(stP.Balance)
 		m.players.Store(p.ID(), p)
 		if len(stP.RoomID) > 0 {
 			rr, ok := m.rooms.Load(stP.RoomID)
