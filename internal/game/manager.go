@@ -2,6 +2,7 @@ package game
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -11,14 +12,15 @@ import (
 
 type Manager struct {
 	maxBet  atomic.Uint64
+	minDeal atomic.Uint64
 	timeout atomic.Duration
 
 	players       sync.Map
 	rooms         sync.Map
 	games         sync.Map
 	canCreateGame atomic.Bool
-	mu            sync.RWMutex
 
+	mu                   sync.RWMutex
 	onNewRoomFunc        OnNewRoomFunc
 	onNewGameFunc        OnNewGameFunc
 	onPlayerJoinRoomFunc OnPlayerJoinRoomFunc
@@ -38,9 +40,10 @@ type OnPlayerHitFunc func(g *Game, p *PlayerInGame)
 type OnGameFinishFunc func(g *Game)
 type OnPlayerPlayFunc func(g *Game, pg *PlayerInGame)
 
-func NewManager(maxBet uint64, timeout time.Duration) *Manager {
+func NewManager(maxBet uint64, minDeal uint64, timeout time.Duration) *Manager {
 	m := &Manager{
 		maxBet:        *atomic.NewUint64(maxBet),
+		minDeal:       *atomic.NewUint64(minDeal),
 		timeout:       *atomic.NewDuration(timeout),
 		canCreateGame: *atomic.NewBool(true),
 	}
@@ -218,6 +221,9 @@ func (m *Manager) NewGame(room *Room, dealer *Player) (*Game, error) {
 	}
 	if !m.canCreateGame.Load() {
 		return nil, ErrServerMaintenance
+	}
+	if dealer.Balance() < int64(m.minDeal.Load()) {
+		return nil, fmt.Errorf("kiếm thêm tiền đi bạn ơi, tối thiểu %dk", m.minDeal.Load())
 	}
 
 	g := NewGame(dealer, room, m.maxBet.Load(), m.timeout.Load())
@@ -437,5 +443,15 @@ func (m *Manager) Pause(ctx context.Context) error {
 
 func (m *Manager) Resume(ctx context.Context) error {
 	m.canCreateGame.Store(true)
+	return nil
+}
+
+func (m *Manager) Deposit(ctx context.Context, id string, amount int64) error {
+	p := m.FindPlayer(ctx, id)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+
+	p.AddBalance(amount)
 	return nil
 }

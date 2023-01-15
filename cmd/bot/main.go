@@ -32,7 +32,7 @@ func run(cmd *cobra.Command, args []string) {
 		log.Fatal().Err(err).Msg("failed to connect to telegram bot")
 	}
 
-	manager := game.NewManager(cfg.MaxBet, cfg.Timeout)
+	manager := game.NewManager(cfg.MaxBet, cfg.MinDeal, cfg.Timeout)
 
 	bh := telegram.NewHandler(manager, bot)
 	if err := bh.Start(); err != nil {

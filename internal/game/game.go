@@ -140,6 +140,9 @@ func (g *Game) PlayerBet(p *Player, betAmount uint64) (*PlayerInGame, error) {
 		g.mu.Unlock()
 	}
 
+	if pg.Balance() < int64(betAmount) {
+		return nil, fmt.Errorf("bạn không đủ tiền để bet %dk", betAmount)
+	}
 	if pg.BetAmount()+betAmount > g.maxBet.Load() {
 		return nil, fmt.Errorf("bạn chỉ được bet tối đa %dk", g.maxBet.Load())
 	}
