@@ -5,8 +5,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"gopkg.in/tucnak/telebot.v2"
 
+	"github.com/psucodervn/verixilac/internal/game"
 	"github.com/psucodervn/verixilac/internal/stringer"
 )
 
@@ -28,7 +30,7 @@ func (h *Handler) CmdAdmin(m *telebot.Message) {
 	case "resume":
 		h.doAdminResume(m)
 	case "deposit":
-		h.doDeposit(m, ss[1:])
+		h.doDeposit(m, p, ss[1:])
 	}
 }
 
@@ -48,7 +50,7 @@ func (h *Handler) doAdminResume(m *telebot.Message) {
 	h.sendMessage(m.Chat, "Server đã resume")
 }
 
-func (h *Handler) doDeposit(m *telebot.Message, ss []string) {
+func (h *Handler) doDeposit(m *telebot.Message, operator *game.Player, ss []string) {
 	if len(ss) != 2 {
 		h.sendMessage(m.Chat, "Cú pháp: /deposit player_id amount")
 		return
@@ -61,9 +63,21 @@ func (h *Handler) doDeposit(m *telebot.Message, ss []string) {
 		return
 	}
 
-	if err := h.game.Deposit(h.ctx(m), id, amount); err != nil {
+	p, err := h.game.Deposit(h.ctx(m), id, amount)
+	if err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return
 	}
-	h.sendMessage(m.Chat, fmt.Sprintf("Đã nạp %dK cho người chơi %s.", amount, id))
+
+	log.Info().Str("operator", operator.Name()).
+		Str("operator_id", operator.ID()).
+		Str("recipient", p.Name()).
+		Str("recipient_id", p.ID()).
+		Int64("amount", amount).Msg("deposit")
+
+	msg := fmt.Sprintf("💰%s đã bơm vào %dk.", p.Name(), amount)
+	if amount < 0 {
+		msg = fmt.Sprintf("💸 %s đã rút ra %dk.", p.Name(), -amount)
+	}
+	h.broadcast(h.game.Players(), msg, false)
 }

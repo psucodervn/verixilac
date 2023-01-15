@@ -446,12 +446,12 @@ func (m *Manager) Resume(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) Deposit(ctx context.Context, id string, amount int64) error {
+func (m *Manager) Deposit(ctx context.Context, id string, amount int64) (*Player, error) {
 	p := m.FindPlayer(ctx, id)
 	if p == nil {
-		return ErrPlayerNotFound
+		return nil, ErrPlayerNotFound
 	}
 
 	p.AddBalance(amount)
-	return nil
+	return p, nil
 }
