@@ -157,7 +157,8 @@ func (g *Game) PreparingBoard() string {
 	defer g.mu.RUnlock()
 
 	bf := bytes.NewBuffer(nil)
-	bf.WriteString(fmt.Sprintf("Nhà cái: %s\n", g.dealer.Name()))
+	r := g.Rule()
+	bf.WriteString(fmt.Sprintf("Nhà cái: %s (rule: %s)\n", g.dealer.Name(), r.Name))
 	bf.WriteString(fmt.Sprintf("Người chơi (%d):", len(g.players)))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
@@ -402,6 +403,10 @@ func (g *Game) Pass(pg *PlayerInGame) error {
 	}
 	_, err := g.PlayerNext()
 	return err
+}
+
+func (g *Game) Rule() *Rule {
+	return g.rule
 }
 
 func Compare(a, b *PlayerInGame) Result {
