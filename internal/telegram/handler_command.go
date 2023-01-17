@@ -137,6 +137,7 @@ func (h *Handler) CmdSetRule(m *telebot.Message) {
 		return
 	}
 	p.SetRule(ruleID)
+	_ = h.game.SaveToStorage()
 	h.sendMessage(m.Chat, "Đã thay đổi rule của bạn thành: "+r.Name+". Tạo game mới để cảm nhận!")
 }
 
