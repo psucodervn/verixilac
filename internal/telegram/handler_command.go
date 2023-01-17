@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/tucnak/telebot.v2"
@@ -50,6 +51,14 @@ var (
 			Text:        "rooms",
 			Description: "Xem danh sách phòng",
 		},
+		{
+			Text:        "rules",
+			Description: "Xem danh sách rule",
+		},
+		{
+			Text:        "setrule",
+			Description: "Thay đổi rule. Cú pháp: /setrule rule_id",
+		},
 	}
 )
 
@@ -88,6 +97,8 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/rooms", h.CmdListRoom)
 	h.bot.Handle("/pass", h.CmdPass)
 	h.bot.Handle("/status", h.CmdStatus)
+	h.bot.Handle("/rules", h.CmdListRules)
+	h.bot.Handle("/setrule", h.CmdSetRule)
 	h.bot.Handle("/admin", h.CmdAdmin)
 
 	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
@@ -113,13 +124,31 @@ func (h *Handler) CmdStart(m *telebot.Message) {
 	h.joinServer(m)
 }
 
+func (h *Handler) CmdListRules(m *telebot.Message) {
+	h.sendMessage(m.Chat, game.RuleListText)
+}
+
+func (h *Handler) CmdSetRule(m *telebot.Message) {
+	p := h.joinServer(m)
+	ruleID := strings.TrimSpace(m.Payload)
+	r, ok := game.DefaultRules[ruleID]
+	if !ok {
+		h.sendMessage(m.Chat, "Không tìm thấy rule: "+ruleID)
+		return
+	}
+	p.SetRule(ruleID)
+	h.sendMessage(m.Chat, "Đã thay đổi rule của bạn thành: "+r.Name+". Tạo game mới để cảm nhận!")
+}
+
 func (h *Handler) CmdStatus(m *telebot.Message) {
 	p := h.joinServer(m)
+	r := p.Rule()
 	msg := fmt.Sprintf(`Thông tin của bạn:
 - ID: %s
 - Name: %s
 - Balance: %dk
-`, p.ID(), p.Name(), p.Balance())
+- Rule: %s (%s)
+`, p.ID(), p.Name(), p.Balance(), r.ID, r.Name)
 	h.sendMessage(m.Chat, msg)
 }
 

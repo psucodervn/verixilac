@@ -55,8 +55,9 @@ func Test_reverseResult(t *testing.T) {
 
 func TestGetReward(t *testing.T) {
 	type args struct {
-		aIds []int
-		bIds []int
+		aIds   []int
+		bIds   []int
+		ruleID string
 	}
 	tests := []struct {
 		name string
@@ -70,14 +71,21 @@ func TestGetReward(t *testing.T) {
 		{args: args{aIds: []int{9, 5}, bIds: []int{0, 5, 7}}, want: 1},
 		{args: args{aIds: []int{7, 8}, bIds: []int{0, 5, 7}}, want: 1},
 		{args: args{aIds: []int{7, 8}, bIds: []int{0, 13}}, want: -2},
+		{args: args{aIds: []int{7, 8}, bIds: []int{0, 13}, ruleID: "2"}, want: -3},
 		{args: args{aIds: []int{0, 13}, bIds: []int{26, 39}}, want: 0},
 		{args: args{aIds: []int{0, 13}, bIds: []int{1, 2}}, want: 1},
+		{args: args{aIds: []int{0, 13}, bIds: []int{1, 2}, ruleID: "2"}, want: 3},
+		{args: args{aIds: []int{0, 10}, bIds: []int{1, 2}, ruleID: "2"}, want: 2},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			rule := DefaultRules[DefaultRuleID]
+			if tt.args.ruleID != "" {
+				rule = DefaultRules[tt.args.ruleID]
+			}
 			pa := &PlayerInGame{cards: NewCards(tt.args.aIds...), isDealer: *atomic.NewBool(true)}
 			pb := &PlayerInGame{cards: NewCards(tt.args.bIds...), isDealer: *atomic.NewBool(false), betAmount: *atomic.NewUint64(1)}
-			if got := GetReward(pa, pb); got != tt.want {
+			if got := GetReward(&rule, pa, pb); got != tt.want {
 				t.Errorf("GetReward() = %v, want %v", got, tt.want)
 			}
 		})

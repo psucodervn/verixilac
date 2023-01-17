@@ -7,6 +7,13 @@ import (
 	"go.uber.org/atomic"
 )
 
+type PlayerType uint8
+
+const (
+	Dealer PlayerType = iota
+	Participant
+)
+
 type PlayerInGame struct {
 	*Player
 	cards     Cards
@@ -140,8 +147,15 @@ func (p *PlayerInGame) CanStand() bool {
 	return t != TypeTooLow
 }
 
-func (p *PlayerInGame) Type() ResultType {
+func (p *PlayerInGame) ResultType() ResultType {
 	return p.Cards().Type(p.isDealer.Load())
+}
+
+func (p *PlayerInGame) Type() PlayerType {
+	if p.isDealer.Load() {
+		return Dealer
+	}
+	return Participant
 }
 
 func ToPlayers(playersInGame []*PlayerInGame) []*Player {

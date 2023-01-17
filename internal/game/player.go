@@ -11,6 +11,7 @@ type Player struct {
 	name        string
 	balance     atomic.Int64
 	isAdmin     atomic.Bool
+	ruleID      atomic.String
 	currentRoom *Room
 	currentGame *Game
 
@@ -73,4 +74,16 @@ func (p *Player) AddBalance(amount int64) {
 
 func (p *Player) Balance() int64 {
 	return p.balance.Load()
+}
+
+func (p *Player) Rule() *Rule {
+	if r, ok := DefaultRules[p.ruleID.Load()]; ok {
+		return &r
+	}
+	r := DefaultRules[DefaultRuleID]
+	return &r
+}
+
+func (p *Player) SetRule(ruleID string) {
+	p.ruleID.Store(ruleID)
 }

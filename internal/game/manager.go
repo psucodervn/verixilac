@@ -226,7 +226,7 @@ func (m *Manager) NewGame(room *Room, dealer *Player) (*Game, error) {
 		return nil, fmt.Errorf("kiếm thêm tiền đi bạn ơi, tối thiểu %dk", m.minDeal.Load())
 	}
 
-	g := NewGame(dealer, room, m.maxBet.Load(), m.timeout.Load())
+	g := NewGame(dealer, room, dealer.Rule(), m.maxBet.Load(), m.timeout.Load())
 	dealer.SetCurrentGame(g)
 	room.SetCurrentGame(g)
 	m.games.Store(g.ID(), g)
@@ -346,14 +346,14 @@ func (m *Manager) Deal(ctx context.Context, g *Game) error {
 
 func (m *Manager) Start(ctx context.Context, g *Game) error {
 	// check for early win
-	gt := g.Dealer().Type()
+	gt := g.Dealer().ResultType()
 	if gt == TypeDoubleBlackJack || gt == TypeBlackJack {
 		return m.FinishGame(ctx, g, true)
 	}
 
 	cnt := 0
 	for _, p := range g.Players() {
-		pt := p.Type()
+		pt := p.ResultType()
 		if pt == TypeDoubleBlackJack || pt == TypeBlackJack {
 			_, _ = g.Done(p, true)
 			cnt++

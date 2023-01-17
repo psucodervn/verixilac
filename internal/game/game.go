@@ -16,6 +16,7 @@ type Game struct {
 	id         string
 	room       *Room
 	dealer     *PlayerInGame
+	rule       *Rule
 	players    []*PlayerInGame
 	table      []Card
 	status     atomic.Uint32
@@ -56,11 +57,12 @@ func (r Result) String() string {
 	}
 }
 
-func NewGame(dealer *Player, room *Room, maxBet uint64, timeout time.Duration) *Game {
+func NewGame(dealer *Player, room *Room, rule *Rule, maxBet uint64, timeout time.Duration) *Game {
 	return &Game{
 		id:         xid.New().String(),
 		room:       room,
 		dealer:     NewPlayerInGame(dealer, 0, true),
+		rule:       rule,
 		currentIdx: -1,
 		maxBet:     *atomic.NewUint64(maxBet),
 		timeout:    *atomic.NewDuration(timeout),
@@ -337,7 +339,7 @@ func (g *Game) Done(pg *PlayerInGame, force bool) (int64, error) {
 		}
 	}
 
-	reward := GetReward(g.dealer, pg)
+	reward := GetReward(g.rule, g.dealer, pg)
 	g.dealer.AddReward(reward)
 	g.doneCnt.Dec()
 	pg.Done(-reward)
@@ -420,30 +422,32 @@ func Compare(a, b *PlayerInGame) Result {
 	return res
 }
 
-func GetReward(a, b *PlayerInGame) int64 {
-	cp := Compare(a, b)
+func GetReward(rule *Rule, dealer, participant *PlayerInGame) int64 {
+	cp := Compare(dealer, participant)
 	if cp == Draw {
 		return 0
 	}
-	rta := a.Cards().Type(a.IsDealer())
-	rtb := b.Cards().Type(b.IsDealer())
-	if rta == TypeDoubleBlackJack {
-		if a.IsDealer() {
-			return int64(b.BetAmount())
+	rtDealer := dealer.Cards().Type(true)
+	rtb := participant.Cards().Type(false)
+
+	bm := int64(participant.BetAmount())
+	var coff int64
+	if cp == Win {
+		// dealer win
+		if v, ok := rule.Multipliers[Dealer][rtDealer]; ok {
+			coff = v
 		} else {
-			return int64(b.BetAmount() * 2)
+			coff = 1
 		}
-	} else if rtb == TypeDoubleBlackJack {
-		if b.IsDealer() {
-			return -int64(b.BetAmount())
-		} else {
-			return -int64(b.BetAmount() * 2)
-		}
-	} else if cp == Win {
-		return int64(b.BetAmount())
 	} else {
-		return -int64(b.BetAmount())
+		// participant win
+		if v, ok := rule.Multipliers[Participant][rtb]; ok {
+			coff = -v
+		} else {
+			coff = -1
+		}
 	}
+	return bm * coff
 }
 
 func compareScore(a, b int) Result {
