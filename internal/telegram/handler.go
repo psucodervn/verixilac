@@ -359,6 +359,7 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 	reward, err := g.Done(to, false)
 	if err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+		return
 	}
 	if h.game.CheckIfFinish(h.ctx(m), g) {
 		return

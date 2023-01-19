@@ -111,8 +111,6 @@ func (p *PlayerInGame) Stand() error {
 	if PlayerInGameStatus(p.status.Load()) != PlayerPlaying {
 		return ErrYouNotPlaying
 	}
-	p.mu.RLock()
-	defer p.mu.RUnlock()
 	if p.cards.Type(p.isDealer.Load()) == TypeTooLow {
 		return ErrTooLow
 	}
