@@ -159,7 +159,7 @@ func (g *Game) PreparingBoard() string {
 	bf := bytes.NewBuffer(nil)
 	r := g.Rule()
 	bf.WriteString(fmt.Sprintf("Nhà cái: %s (rule: %s)\n", g.dealer.Name(), r.Name))
-	bf.WriteString(fmt.Sprintf("Người chơi (%d):", len(g.players)))
+	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
 	} else {
@@ -176,7 +176,7 @@ func (g *Game) CurrentBoard() string {
 
 	bf := bytes.NewBuffer(nil)
 	bf.WriteString(fmt.Sprintf("Nhà cái: %s\n", g.dealer.CardsString()))
-	bf.WriteString(fmt.Sprintf("Người chơi (%d):", len(g.players)))
+	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
 	} else {
@@ -203,7 +203,7 @@ func (g *Game) ResultBoard() string {
 
 	bf := bytes.NewBuffer(nil)
 	bf.WriteString(fmt.Sprintf("Nhà cái: %s\n", g.dealer.Cards().String(false, true)))
-	bf.WriteString(fmt.Sprintf("Người chơi (%d):", len(g.players)))
+	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
 	for _, p := range g.players {
 		bf.WriteString(fmt.Sprintf("\n  - %s: %s", p.Name(), p.Cards().String(false, false)))
 	}
@@ -412,6 +412,14 @@ func (g *Game) Pass(pg *PlayerInGame) error {
 
 func (g *Game) Rule() *Rule {
 	return g.rule
+}
+
+func (g *Game) totalBetAmount() uint64 {
+	res := uint64(0)
+	for _, p := range g.players {
+		res += p.BetAmount()
+	}
+	return res
 }
 
 func Compare(a, b *PlayerInGame) Result {

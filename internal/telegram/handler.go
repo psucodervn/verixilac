@@ -380,6 +380,9 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 		msgDealer += fmt.Sprintf("\n%s và cái hoà nhau", to.Name())
 		msgPlayer = fmt.Sprintf("🤝 Cái lật bài bạn và hoà. Bạn không bị mất tiền")
 	}
+	msgPlayer += fmt.Sprintf("\nBài của cái: %s",
+		dealer.Cards().String(false, true),
+	)
 
 	if onQuery {
 		h.editMessage(m, msgDealer)
