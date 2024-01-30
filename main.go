@@ -4,11 +4,11 @@ import (
 	"os"
 
 	"github.com/joho/godotenv"
-	"github.com/psucodervn/go/logger"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/psucodervn/verixilac/cmd/bot"
+	"github.com/psucodervn/verixilac/pkg/logger"
 )
 
 var (
