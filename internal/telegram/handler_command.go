@@ -59,6 +59,10 @@ var (
 			Text:        "setrule",
 			Description: "Thay đổi rule. Cú pháp: /setrule rule_id",
 		},
+		{
+			Text:        "icon",
+			Description: "Thay đổi icon. Cú pháp: /seticon icon",
+		},
 	}
 )
 
@@ -100,6 +104,7 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/rules", h.CmdListRules)
 	h.bot.Handle("/setrule", h.CmdSetRule)
 	h.bot.Handle("/admin", h.CmdAdmin)
+	h.bot.Handle("/seticon", h.CmdSetIcon)
 
 	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
 		log.Info().Interface("q", q).Msg("on query")
@@ -112,7 +117,11 @@ func (h *Handler) Start() (err error) {
 		p := h.joinServer(m)
 		if r := p.CurrentRoom(); r != nil {
 			ps := FilterPlayers(r.Players(), p.ID())
-			h.sendChat(ps, "🗣 "+GetUsername(m.Chat)+": "+m.Text)
+			icon := "🗣"
+			if len(p.Icon()) > 0 {
+				icon = p.Icon()
+			}
+			h.sendChat(ps, icon+" "+GetUsername(m.Chat)+": "+m.Text)
 		}
 	})
 
@@ -258,4 +267,16 @@ func (h *Handler) CmdPass(m *telebot.Message) {
 	}
 	// h.broadcast(g.AllPlayers(), pg.Name() + " đã bị qua lượt", false)
 	log.Info().Str("game_id", g.ID()).Str("user_id", pg.ID()).Msg(pg.Name() + " đã bị qua lượt")
+}
+
+func (h *Handler) CmdSetIcon(m *telebot.Message) {
+	p := h.joinServer(m)
+	icon := strings.TrimSpace(m.Payload)
+	if len(icon) != 1 {
+		h.sendMessage(m.Chat, "Cú pháp: /seticon icon. Icon chỉ được phép là 1 ký tự")
+		return
+	}
+	p.SetIcon(icon)
+	_ = h.game.SaveToStorage()
+	h.sendMessage(m.Chat, "Đã thay đổi icon của bạn thành: "+icon)
 }

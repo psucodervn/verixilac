@@ -9,6 +9,7 @@ import (
 type Player struct {
 	id          string
 	name        string
+	icon        string
 	balance     atomic.Int64
 	isAdmin     atomic.Bool
 	ruleID      atomic.String
@@ -86,4 +87,15 @@ func (p *Player) Rule() *Rule {
 
 func (p *Player) SetRule(ruleID string) {
 	p.ruleID.Store(ruleID)
+}
+
+func (p *Player) SetIcon(icon string) {
+	if len(icon) == 0 {
+		return
+	}
+	p.icon = icon
+}
+
+func (p *Player) Icon() string {
+	return p.icon
 }
