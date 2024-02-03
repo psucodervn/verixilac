@@ -1,10 +1,8 @@
 package telegram
 
 import (
-	"bytes"
+	"context"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"gopkg.in/tucnak/telebot.v2"
@@ -28,16 +26,12 @@ var (
 			Description: "Kết thúc ván",
 		},
 		{
-			Text:        "newroom",
-			Description: "Tạo phòng mới",
-		},
-		{
 			Text:        "join",
-			Description: "Tham gia vào phòng. Cú pháp: /join room_id",
+			Description: "Tham gia vào phòng chờ",
 		},
 		{
 			Text:        "leave",
-			Description: "Rời phòng",
+			Description: "Rời phòng chờ",
 		},
 		{
 			Text:        "pass",
@@ -48,16 +42,12 @@ var (
 			Description: "Xem thông tin phòng",
 		},
 		{
-			Text:        "rooms",
-			Description: "Xem danh sách phòng",
-		},
-		{
 			Text:        "rules",
 			Description: "Xem danh sách rule",
 		},
 		{
-			Text:        "setrule",
-			Description: "Thay đổi rule. Cú pháp: /setrule rule_id",
+			Text:        "history",
+			Description: "Xem lịch sử chơi. Cú pháp: /history",
 		},
 	}
 )
@@ -77,9 +67,8 @@ func (h *Handler) Start() (err error) {
 		log.Err(err).Msg("load data failed")
 	}
 
-	h.game.OnNewRoom(h.onNewRoom)
 	h.game.OnNewGame(h.onNewGame)
-	h.game.OnPlayerJoinRoom(h.onPlayerJoinRoom)
+	h.game.OnPlayerJoin(h.onPlayerJoin)
 	h.game.OnPlayerBet(h.onPlayerBet)
 	h.game.OnPlayerStand(h.onPlayerStand)
 	h.game.OnPlayerHit(h.onPlayerHit)
@@ -87,18 +76,16 @@ func (h *Handler) Start() (err error) {
 	h.game.OnGameFinish(h.onGameFinish)
 
 	h.bot.Handle("/start", h.CmdStart)
-	h.bot.Handle("/newroom", h.CmdNewRoom)
 	h.bot.Handle("/newgame", h.CmdNewGame)
-	h.bot.Handle("/join", h.CmdJoinRoom)
-	h.bot.Handle("/leave", h.CmdLeaveRoom)
+	// h.bot.Handle("/join", h.CmdJoin)
+	// h.bot.Handle("/leave", h.CmdLeave)
 	h.bot.Handle("/endgame", h.CmdEndGame)
 	h.bot.Handle("/save", h.CmdSave)
-	h.bot.Handle("/room", h.CmdRoomInfo)
-	h.bot.Handle("/rooms", h.CmdListRoom)
 	h.bot.Handle("/pass", h.CmdPass)
 	h.bot.Handle("/status", h.CmdStatus)
 	h.bot.Handle("/rules", h.CmdListRules)
 	h.bot.Handle("/setrule", h.CmdSetRule)
+	h.bot.Handle("/history", h.CmdHistory)
 	h.bot.Handle("/admin", h.CmdAdmin)
 
 	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
@@ -110,10 +97,8 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle(telebot.OnText, func(m *telebot.Message) {
 		log.Info().Msg(m.Text + " " + GetUsername(m.Chat))
 		p := h.joinServer(m)
-		if r := p.CurrentRoom(); r != nil {
-			ps := FilterPlayers(r.Players(), p.ID())
-			h.sendChat(ps, "🗣 "+GetUsername(m.Chat)+": "+m.Text)
-		}
+		ps := FilterPlayers(h.game.Players(), p.ID)
+		h.sendChat(ps, "🗣 "+GetUsername(m.Chat)+": "+m.Text)
 	})
 
 	h.bot.Start()
@@ -129,27 +114,32 @@ func (h *Handler) CmdListRules(m *telebot.Message) {
 }
 
 func (h *Handler) CmdSetRule(m *telebot.Message) {
-	p := h.joinServer(m)
-	ruleID := strings.TrimSpace(m.Payload)
-	r, ok := game.DefaultRules[ruleID]
-	if !ok {
-		h.sendMessage(m.Chat, "Không tìm thấy rule: "+ruleID)
-		return
-	}
-	p.SetRule(ruleID)
-	_ = h.game.SaveToStorage()
-	h.sendMessage(m.Chat, "Đã thay đổi rule của bạn thành: "+r.Name+". Tạo game mới để cảm nhận!")
+	h.sendMessage(m.Chat, "Chức năng tạm thời bị vô hiệu hóa")
+	// p := h.joinServer(m)
+	// ruleID := strings.TrimSpace(m.Payload)
+	// r, ok := game.DefaultRules[ruleID]
+	// if !ok {
+	// 	h.sendMessage(m.Chat, "Không tìm thấy rule: "+ruleID)
+	// 	return
+	// }
+	// p, err := h.game.SetRule(h.ctx(m), p, ruleID)
+	// h.sendMessage(m.Chat, "Đã thay đổi rule của bạn thành: "+r.Name+". Tạo game mới để cảm nhận!")
+}
+
+func (h *Handler) CmdHistory(m *telebot.Message) {
+	_ = h.joinServer(m)
+	h.sendMessage(m.Chat, h.game.ListPlayers(context.Background()))
 }
 
 func (h *Handler) CmdStatus(m *telebot.Message) {
 	p := h.joinServer(m)
-	r := p.Rule()
-	msg := fmt.Sprintf(`Thông tin của bạn:
-- ID: %s
-- Name: %s
-- Balance: %dk
-- Rule: %s (%s)
-`, p.ID(), p.Name(), p.Balance(), r.ID, r.Name)
+	r := game.DefaultRule
+	msg := fmt.Sprintf("Thông tin của bạn:\n"+
+		"- ID: `%s`\n"+
+		"- Name: %s\n"+
+		"- Balance: `%s` k\n"+
+		"- Rule: %s (%s)\n",
+		p.ID, p.Name, stringer.FormatCurrency(p.Balance), r.ID, r.Name)
 	h.sendMessage(m.Chat, msg)
 }
 
@@ -163,16 +153,6 @@ func (h *Handler) CmdEndGame(m *telebot.Message) {
 	h.doEndGame(m, false)
 }
 
-// CmdNewRoom creates a new room and assign called user as dealer
-func (h *Handler) CmdNewRoom(m *telebot.Message) {
-	p := h.joinServer(m)
-	_, err := h.game.NewRoom(h.ctx(m), p)
-	if err != nil {
-		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
-		return
-	}
-}
-
 func (h *Handler) CmdNewGame(m *telebot.Message) {
 	h.doNewGame(m, false)
 }
@@ -182,80 +162,24 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 	defer h.mu.Unlock()
 
 	p := h.joinServer(m)
-	ctx := h.ctx(m)
-	r := p.CurrentRoom()
-	if r == nil {
-		h.sendMessage(m.Chat, "Bạn chưa vào phòng")
-		return
-	}
-	g, err := h.game.NewGame(r, p)
+
+	g, err := h.game.NewGame(p)
 	if err != nil {
 		h.sendMessage(m.Chat, "Không thể tạo ván mới: "+err.Error())
 		return
 	}
 
-	if len(os.Getenv("TEST_ACCOUNT")) > 0 {
-		_ = g
-		_ = ctx
-		botP1 := game.NewPlayer("123", "Test 1", 1000)
-		_ = h.game.PlayerBet(ctx, g, botP1, 50)
-		botP2 := game.NewPlayer("456", "Test 2", 2000)
-		_ = h.game.PlayerBet(ctx, g, botP2, 100)
+	if autoBotCount > 0 {
+		fakeBet(h.ctx(m), h, g, autoBotCount)
 	}
-}
-
-// CmdJoinRoom joins user to room
-func (h *Handler) CmdJoinRoom(m *telebot.Message) {
-	h.doJoinRoom(m, false)
-}
-
-func (h *Handler) CmdLeaveRoom(m *telebot.Message) {
-	p := h.joinServer(m)
-	if r, err := h.game.LeaveRoom(h.ctx(m), p); err != nil {
-		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
-	} else {
-		h.sendMessage(m.Chat, "Bạn đã rời khỏi phòng "+r.ID())
-	}
-}
-
-func (h *Handler) CmdRoomInfo(m *telebot.Message) {
-	p := h.joinServer(m)
-	r := p.CurrentRoom()
-	if r == nil {
-		h.sendMessage(m.Chat, "Bạn chưa vào phòng")
-		return
-	}
-	h.sendMessage(m.Chat, r.Info())
-}
-
-func (h *Handler) CmdListRoom(m *telebot.Message) {
-	rooms, err := h.game.Rooms(h.ctx(m))
-	if err != nil {
-		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
-		return
-	}
-	bf := bytes.NewBuffer(nil)
-	for _, r := range rooms {
-		bf.WriteString(fmt.Sprintf("Phòng %s:\n", r.ID()))
-		for _, p := range r.Players() {
-			bf.WriteString(fmt.Sprintf(" - %s (%+dk)\n", p.Name(), p.Balance()))
-		}
-	}
-	h.sendMessage(m.Chat, bf.String())
 }
 
 func (h *Handler) CmdPass(m *telebot.Message) {
-	p := h.joinServer(m)
-	g := p.CurrentGame()
-	if g == nil {
-		h.sendMessage(m.Chat, "Không có thông tin ván")
-		return
-	}
-	pg, err := h.game.PlayerPass(h.ctx(m), g)
+	// p := h.joinServer(m)
+	pg, err := h.game.PlayerPass(h.ctx(m))
 	if err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return
 	}
-	// h.broadcast(g.AllPlayers(), pg.Name() + " đã bị qua lượt", false)
-	log.Info().Str("game_id", g.ID()).Str("user_id", pg.ID()).Msg(pg.Name() + " đã bị qua lượt")
+	log.Info().Str("user_id", pg.ID).Msg(pg.Name + " đã bị qua lượt")
 }

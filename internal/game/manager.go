@@ -1,14 +1,27 @@
 package game
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.uber.org/atomic"
+
+	"github.com/psucodervn/verixilac/internal/model"
+	"github.com/psucodervn/verixilac/internal/storage"
 )
+
+var initialBalance int
+
+func init() {
+	initialBalance, _ = strconv.Atoi(os.Getenv("INITIAL_BALANCE"))
+}
 
 type Manager struct {
 	maxBet  atomic.Uint64
@@ -16,24 +29,23 @@ type Manager struct {
 	timeout atomic.Duration
 
 	players       sync.Map
-	rooms         sync.Map
-	games         sync.Map
 	canCreateGame atomic.Bool
+	currentGame   *Game
 
-	mu                   sync.RWMutex
-	onNewRoomFunc        OnNewRoomFunc
-	onNewGameFunc        OnNewGameFunc
-	onPlayerJoinRoomFunc OnPlayerJoinRoomFunc
-	onPlayerBetFunc      OnPlayerBetFunc
-	onPlayerStandFunc    OnPlayerStandFunc
-	onPlayerHitFunc      OnPlayerHitFunc
-	onGameFinishFunc     OnGameFinishFunc
-	onPlayerPlayFunc     OnPlayerPlayFunc
+	store Storage
+
+	mu                sync.RWMutex
+	onNewGameFunc     OnNewGameFunc
+	onPlayerJoinFunc  OnPlayerJoinFunc
+	onPlayerBetFunc   OnPlayerBetFunc
+	onPlayerStandFunc OnPlayerStandFunc
+	onPlayerHitFunc   OnPlayerHitFunc
+	onGameFinishFunc  OnGameFinishFunc
+	onPlayerPlayFunc  OnPlayerPlayFunc
 }
 
-type OnNewGameFunc func(r *Room, g *Game)
-type OnNewRoomFunc func(r *Room, creator *Player)
-type OnPlayerJoinRoomFunc func(r *Room, p *Player)
+type OnNewGameFunc func(g *Game)
+type OnPlayerJoinFunc func(p *model.Player)
 type OnPlayerBetFunc func(g *Game, p *PlayerInGame)
 type OnPlayerStandFunc func(g *Game, p *PlayerInGame)
 type OnPlayerHitFunc func(g *Game, p *PlayerInGame)
@@ -46,115 +58,79 @@ func NewManager(maxBet uint64, minDeal uint64, timeout time.Duration) *Manager {
 		minDeal:       *atomic.NewUint64(minDeal),
 		timeout:       *atomic.NewDuration(timeout),
 		canCreateGame: *atomic.NewBool(true),
+		store:         storage.NewBadgerHoldStorage("data"),
 	}
 	return m
 }
 
-func (m *Manager) PlayerRegister(ctx context.Context, id string, name string) *Player {
-	pp, ok := m.players.Load(id)
-	if !ok || pp == nil {
-		pp = NewPlayer(id, name, 0)
-		m.players.Store(id, pp)
-		log.Ctx(ctx).Debug().Msg("player start using bot")
-	}
-	return pp.(*Player)
-}
+func (m *Manager) PlayerRegister(ctx context.Context, id string, name string, role model.UserRole) *model.Player {
+	p, err := m.store.GetPlayerByID(ctx, id)
+	if err != nil {
+		if !model.IsNotFound(err) {
+			log.Ctx(ctx).Err(err).Str("id", id).Msg("get player failed")
+			return nil
+		}
 
-func (m *Manager) NewRoom(ctx context.Context, p *Player) (*Room, error) {
-	if p.CurrentRoom() != nil {
-		return nil, ErrYouAlreadyInAnotherRoom
-	}
-
-	var id string
-	for {
-		id = generateRoomID()
-		if _, exist := m.rooms.Load(id); !exist {
-			break
+		// create new player
+		p = &model.Player{
+			ID:         id,
+			TelegramID: id,
+			Name:       name,
+			UserRole:   role,
+			Balance:    int64(initialBalance),
+		}
+		if err := m.store.SavePlayer(ctx, p); err != nil {
+			log.Ctx(ctx).Err(err).Str("id", id).Msg("save player failed")
+			return nil
 		}
 	}
 
-	r := NewRoom(id, p)
-	p.SetCurrentRoom(r)
-	log.Ctx(ctx).Debug().Str("room", r.ID()).Msg("new room created")
-
-	m.rooms.Store(r.ID(), r)
-
-	m.mu.RLock()
-	f := m.onNewRoomFunc
-	m.mu.RUnlock()
-
-	if f != nil {
-		f(r, p)
-	}
-	return r, nil
+	return p
 }
 
-func (m *Manager) FindPlayer(ctx context.Context, id string) *Player {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.getPlayer(ctx, id)
-}
-
-func (m *Manager) FindRoom(ctx context.Context, roomID string) *Room {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.getRoom(ctx, roomID)
-}
-
-func (m *Manager) Players() []*Player {
-	var ps []*Player
-	m.players.Range(func(id, pp interface{}) bool {
-		ps = append(ps, pp.(*Player))
-		return true
-	})
-	return ps
-}
-
-func (m *Manager) JoinRoom(ctx context.Context, p *Player, r *Room) error {
-	if cr := p.CurrentRoom(); cr != nil {
-		if cr.ID() == r.ID() {
-			return ErrYouAlreadyInRoom
-		}
-		return ErrYouAlreadyInAnotherRoom
+func (m *Manager) findPlayer(ctx context.Context, id string) *model.Player {
+	p, err := m.store.GetPlayerByID(ctx, id)
+	if err == nil {
+		return p
+	} else if model.IsNotFound(err) {
+		log.Ctx(ctx).Debug().Str("id", id).Msg("player not found")
+	} else {
+		log.Ctx(ctx).Err(err).Str("id", id).Msg("get player failed")
 	}
-
-	if err := r.JoinPlayer(p); err != nil {
-		return err
-	}
-	p.SetCurrentRoom(r)
-
-	m.mu.RLock()
-	f := m.onPlayerJoinRoomFunc
-	m.mu.RUnlock()
-	if f != nil {
-		f(r, p)
-	}
-	log.Ctx(ctx).Debug().Str("room", r.ID()).Msg("player joined room")
 	return nil
 }
 
-func (m *Manager) LeaveRoom(ctx context.Context, p *Player) (*Room, error) {
-	if p.CurrentGame() != nil {
-		return nil, ErrYouAlreadyInGame
+func (m *Manager) Players() []model.Player {
+	ps, err := m.store.ListPlayers(context.TODO())
+	if err != nil {
+		log.Err(err).Msg("list players failed")
+		return nil
 	}
-	if p.CurrentRoom() == nil {
-		return nil, ErrNotInRoom
-	}
-
-	r := p.CurrentRoom()
-	r.RemovePlayer(p)
-	if len(r.Players()) == 0 {
-		m.rooms.Delete(r.ID())
-	}
-	p.SetCurrentRoom(nil)
-	log.Ctx(ctx).Debug().Str("room", r.ID()).Msg("player left room")
-	return r, nil
+	return ps
 }
 
-func (m *Manager) OnNewRoom(f OnNewRoomFunc) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.onNewRoomFunc = f
+func (m *Manager) Join(ctx context.Context, p *model.Player) error {
+	m.mu.RLock()
+	f := m.onPlayerJoinFunc
+	m.mu.RUnlock()
+	if f != nil {
+		f(p)
+	}
+	log.Ctx(ctx).Debug().Str("player_id", p.ID).Msg("player joined room")
+	return nil
+}
+
+func (m *Manager) Leave(ctx context.Context, p *model.Player) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.currentGame != nil {
+		return ErrYouAlreadyInGame
+	}
+
+	// TODO: leave
+	log.Ctx(ctx).Debug().Str("player_id", p.ID).Msg("player left room")
+	return nil
 }
 
 func (m *Manager) OnNewGame(f OnNewGameFunc) {
@@ -163,10 +139,10 @@ func (m *Manager) OnNewGame(f OnNewGameFunc) {
 	m.onNewGameFunc = f
 }
 
-func (m *Manager) OnPlayerJoinRoom(f OnPlayerJoinRoomFunc) {
+func (m *Manager) OnPlayerJoin(f OnPlayerJoinFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.onPlayerJoinRoomFunc = f
+	m.onPlayerJoinFunc = f
 }
 
 func (m *Manager) OnPlayerBet(f OnPlayerBetFunc) {
@@ -199,60 +175,44 @@ func (m *Manager) OnPlayerPlay(f OnPlayerPlayFunc) {
 	m.onPlayerPlayFunc = f
 }
 
-func (m *Manager) getPlayer(ctx context.Context, id string) *Player {
-	p, ok := m.players.Load(id)
-	if !ok || p == nil {
-		return nil
-	}
-	return p.(*Player)
-}
-
-func (m *Manager) getRoom(ctx context.Context, id string) *Room {
-	r, ok := m.rooms.Load(id)
-	if !ok || r == nil {
-		return nil
-	}
-	return r.(*Room)
-}
-
-func (m *Manager) NewGame(room *Room, dealer *Player) (*Game, error) {
-	if room.CurrentGame() != nil {
-		return nil, ErrGameIsExisted
-	}
+func (m *Manager) NewGame(dealer *model.Player) (*Game, error) {
 	if !m.canCreateGame.Load() {
 		return nil, ErrServerMaintenance
 	}
-	if dealer.Balance() < int64(m.minDeal.Load()) {
+	if dealer.Balance < int64(m.minDeal.Load()) {
 		return nil, fmt.Errorf("kiếm thêm tiền đi bạn ơi, tối thiểu %dk", m.minDeal.Load())
 	}
 
-	g := NewGame(dealer, room, dealer.Rule(), m.maxBet.Load(), m.timeout.Load())
-	dealer.SetCurrentGame(g)
-	room.SetCurrentGame(g)
-	m.games.Store(g.ID(), g)
+	m.mu.Lock()
+	if m.currentGame != nil {
+		m.mu.Unlock()
+		return nil, ErrGameIsExisted
+	}
 
-	m.mu.RLock()
+	g := NewGame(dealer, &DefaultRule, m.maxBet.Load(), m.timeout.Load())
+	m.currentGame = g
 	f := m.onNewGameFunc
-	m.mu.RUnlock()
+	m.mu.Unlock()
 
 	if f != nil {
-		f(room, g)
+		f(g)
 	}
 	return g, nil
 }
 
-func (m *Manager) FindGame(ctx context.Context, gameID string) *Game {
-	p, ok := m.games.Load(gameID)
-	if !ok || p == nil {
-		return nil
-	}
-	return p.(*Game)
-}
+func (m *Manager) PlayerBet(ctx context.Context, gameID string, p *model.Player, amount uint64) (err error) {
+	m.mu.RLock()
+	g := m.currentGame
+	f := m.onPlayerBetFunc
+	m.mu.RUnlock()
 
-func (m *Manager) PlayerBet(ctx context.Context, g *Game, p *Player, amount uint64) (err error) {
+	if g == nil || g.ID() != gameID {
+		return ErrGameNotFound
+	}
+
 	var pg *PlayerInGame
 	if amount == 0 {
-		if err = g.RemovePlayer(p.ID()); err != nil {
+		if err = g.RemovePlayer(p.ID); err != nil {
 			return err
 		}
 	} else {
@@ -260,12 +220,8 @@ func (m *Manager) PlayerBet(ctx context.Context, g *Game, p *Player, amount uint
 		if err != nil {
 			return err
 		}
-		p.SetCurrentGame(g)
 	}
 
-	m.mu.RLock()
-	f := m.onPlayerBetFunc
-	m.mu.RUnlock()
 	if f != nil {
 		f(g, pg)
 	}
@@ -329,7 +285,15 @@ func (m *Manager) CheckIfFinish(ctx context.Context, g *Game) bool {
 	return err == nil
 }
 
-func (m *Manager) Deal(ctx context.Context, g *Game) error {
+func (m *Manager) Deal(ctx context.Context, gameID string) (*Game, error) {
+	m.mu.RLock()
+	g := m.currentGame
+	m.mu.RUnlock()
+
+	if g == nil || g.ID() != gameID {
+		return nil, ErrGameNotFound
+	}
+
 	g.OnPlayerPlay(func(pg *PlayerInGame) {
 		m.mu.RLock()
 		f := m.onPlayerPlayFunc
@@ -339,9 +303,9 @@ func (m *Manager) Deal(ctx context.Context, g *Game) error {
 		}
 	})
 	if err := g.Deal(); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return g, nil
 }
 
 func (m *Manager) Start(ctx context.Context, g *Game) error {
@@ -352,7 +316,7 @@ func (m *Manager) Start(ctx context.Context, g *Game) error {
 	}
 
 	cnt := 0
-	for _, p := range g.Players() {
+	for _, p := range g.PlayersInGame() {
 		pt := p.ResultType()
 		if pt == TypeDoubleBlackJack || pt == TypeBlackJack {
 			_, _ = g.Done(p, true)
@@ -360,7 +324,7 @@ func (m *Manager) Start(ctx context.Context, g *Game) error {
 		}
 	}
 
-	if cnt == len(g.Players()) {
+	if cnt == len(g.PlayersInGame()) {
 		return m.FinishGame(ctx, g, true)
 	}
 
@@ -371,25 +335,29 @@ func (m *Manager) Start(ctx context.Context, g *Game) error {
 }
 
 func (m *Manager) FinishGame(ctx context.Context, g *Game, force bool) error {
-	for _, pg := range g.Players() {
+	if err := m.store.SaveRecord(ctx, &model.Record{
+		GameID: g.ID(),
+		Data:   g.ResultBoard(),
+	}); err != nil {
+		return err
+	}
+
+	for _, pg := range g.PlayersInGame() {
 		if _, err := g.Done(pg, force); err != nil {
 			return err
 		}
 	}
 
-	g.Dealer().SetCurrentGame(nil)
-	for _, p := range g.Players() {
-		p.Player.AddBalance(p.Reward())
-		p.SetCurrentGame(nil)
+	for _, p := range g.PlayersInGame() {
+		_, _ = m.store.AddPlayerBalance(ctx, p.Player.ID, p.Reward())
 	}
-	g.Dealer().Player.AddBalance(g.Dealer().Reward())
-	m.games.Delete(g.ID())
-	r := g.Room()
-	r.SetCurrentGame(nil)
+	_, _ = m.store.AddPlayerBalance(ctx, g.Dealer().Player.ID, g.Dealer().Reward())
 
-	m.mu.RLock()
+	m.mu.Lock()
 	f := m.onGameFinishFunc
-	m.mu.RUnlock()
+	m.currentGame = nil
+	m.mu.Unlock()
+
 	if f != nil {
 		f(g)
 	}
@@ -400,23 +368,12 @@ func (m *Manager) CancelGame(ctx context.Context, g *Game) error {
 	if g.Status() != Betting {
 		return ErrGameAlreadyStarted
 	}
-	g.Dealer().SetCurrentGame(nil)
-	for _, pg := range g.Players() {
-		pg.Player.SetCurrentGame(nil)
-	}
-	g.Room().SetCurrentGame(nil)
-	m.games.Delete(g.ID())
-	return nil
-}
 
-func (m *Manager) Rooms(ctx context.Context) ([]*Room, error) {
-	var rs []*Room
-	m.rooms.Range(func(id, rr interface{}) bool {
-		r := rr.(*Room)
-		rs = append(rs, r)
-		return true
-	})
-	return rs, nil
+	m.mu.Lock()
+	m.currentGame = nil
+	m.mu.Unlock()
+
+	return nil
 }
 
 func (m *Manager) SetMaxBet(maxBet uint64) uint64 {
@@ -424,7 +381,15 @@ func (m *Manager) SetMaxBet(maxBet uint64) uint64 {
 	return maxBet
 }
 
-func (m *Manager) PlayerPass(ctx context.Context, g *Game) (*PlayerInGame, error) {
+func (m *Manager) PlayerPass(ctx context.Context) (*PlayerInGame, error) {
+	m.mu.RLock()
+	g := m.currentGame
+	m.mu.RUnlock()
+
+	if g == nil {
+		return nil, ErrGameNotFound
+	}
+
 	pg := g.CurrentPlaying()
 	if pg == nil {
 		return nil, ErrPlayerNotFound
@@ -446,12 +411,51 @@ func (m *Manager) Resume(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) Deposit(ctx context.Context, id string, amount int64) (*Player, error) {
-	p := m.FindPlayer(ctx, id)
+func (m *Manager) Deposit(ctx context.Context, id string, amount int64) (*model.Player, error) {
+	p := m.findPlayer(ctx, id)
 	if p == nil {
 		return nil, ErrPlayerNotFound
 	}
 
-	p.AddBalance(amount)
-	return p, nil
+	return m.store.AddPlayerBalance(ctx, p.ID, amount)
+}
+
+func (m *Manager) PlayerHistory(ctx context.Context, p *model.Player) string {
+	records, err := m.store.ListRecords(ctx, p.ID)
+	if err != nil {
+		return err.Error()
+	}
+
+	bf := bytes.NewBuffer(nil)
+	for _, r := range records {
+		bf.WriteString(fmt.Sprintf("%s\n", r.GameID))
+	}
+	return bf.String()
+}
+
+func (m *Manager) ListPlayers(ctx context.Context) string {
+	players, err := m.store.ListPlayers(ctx)
+	if err != nil {
+		return err.Error()
+	}
+	res, _ := json.Marshal(players)
+	return string(res)
+}
+
+func (m *Manager) FindPlayerInGame(gameID string, playerID string) (*Game, *PlayerInGame) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	g := m.currentGame
+	if g == nil || g.ID() != gameID {
+		return nil, nil
+	}
+	return g, g.FindPlayer(playerID)
+}
+
+func (m *Manager) CurrentGame() *Game {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.currentGame
 }

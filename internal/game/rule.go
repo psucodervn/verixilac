@@ -18,16 +18,6 @@ var (
 	DefaultRules  = map[string]Rule{
 		"1": {
 			ID:          "1",
-			Name:        "Default",
-			Description: `Xì bàn: con x2, cái x1`,
-			Multipliers: map[PlayerType]map[ResultType]int64{
-				Participant: {
-					TypeDoubleBlackJack: 2,
-				},
-			},
-		},
-		"2": {
-			ID:          "2",
 			Name:        "Hai Dinh",
 			Description: `Xì lác, ngũ linh: x2. Xì bàn: x3. Con cái như nhau.`,
 			Multipliers: map[PlayerType]map[ResultType]int64{
@@ -43,7 +33,18 @@ var (
 				},
 			},
 		},
+		"2": {
+			ID:          "2",
+			Name:        "Normal",
+			Description: `Xì bàn: con x2, cái x1`,
+			Multipliers: map[PlayerType]map[ResultType]int64{
+				Participant: {
+					TypeDoubleBlackJack: 2,
+				},
+			},
+		},
 	}
+	DefaultRule   = DefaultRules[DefaultRuleID]
 	SortedRuleIDs []string
 	RuleListText  string
 )

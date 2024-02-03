@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"go.uber.org/atomic"
+
+	"github.com/psucodervn/verixilac/internal/model"
 )
 
 type PlayerType uint8
@@ -15,7 +17,7 @@ const (
 )
 
 type PlayerInGame struct {
-	*Player
+	*model.Player
 	cards     Cards
 	betAmount atomic.Uint64
 	isDealer  atomic.Bool
@@ -48,7 +50,7 @@ const (
 	PlayerDone
 )
 
-func NewPlayerInGame(player *Player, betAmount int64, isDealer bool) *PlayerInGame {
+func NewPlayerInGame(player *model.Player, betAmount int64, isDealer bool) *PlayerInGame {
 	return &PlayerInGame{
 		Player:    player,
 		betAmount: *atomic.NewUint64(uint64(betAmount)),
@@ -154,12 +156,4 @@ func (p *PlayerInGame) Type() PlayerType {
 		return Dealer
 	}
 	return Participant
-}
-
-func ToPlayers(playersInGame []*PlayerInGame) []*Player {
-	ps := make([]*Player, len(playersInGame))
-	for i := range playersInGame {
-		ps[i] = playersInGame[i].Player
-	}
-	return ps
 }

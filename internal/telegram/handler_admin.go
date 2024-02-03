@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"gopkg.in/tucnak/telebot.v2"
 
-	"github.com/psucodervn/verixilac/internal/game"
+	"github.com/psucodervn/verixilac/internal/model"
 	"github.com/psucodervn/verixilac/internal/stringer"
 )
 
@@ -50,7 +50,7 @@ func (h *Handler) doAdminResume(m *telebot.Message) {
 	h.broadcast(h.game.Players(), "✅ Server is Live now. Enjoy!", false)
 }
 
-func (h *Handler) doDeposit(m *telebot.Message, operator *game.Player, ss []string) {
+func (h *Handler) doDeposit(m *telebot.Message, operator *model.Player, ss []string) {
 	if len(ss) != 2 {
 		h.sendMessage(m.Chat, "Cú pháp: /deposit player_id amount")
 		return
@@ -69,15 +69,15 @@ func (h *Handler) doDeposit(m *telebot.Message, operator *game.Player, ss []stri
 		return
 	}
 
-	log.Info().Str("operator", operator.Name()).
-		Str("operator_id", operator.ID()).
-		Str("recipient", p.Name()).
-		Str("recipient_id", p.ID()).
+	log.Info().Str("operator", operator.Name).
+		Str("operator_id", operator.ID).
+		Str("recipient", p.Name).
+		Str("recipient_id", p.ID).
 		Int64("amount", amount).Msg("deposit")
 
-	msg := fmt.Sprintf("💰%s đã bơm vào %dk.", p.Name(), amount)
+	msg := fmt.Sprintf("💰`%s` đã bơm vào %dk.", p.Name, amount)
 	if amount < 0 {
-		msg = fmt.Sprintf("💸 %s đã rút ra %dk.", p.Name(), -amount)
+		msg = fmt.Sprintf("💸 `%s` đã rút ra %dk.", p.Name, -amount)
 	}
 	h.broadcast(h.game.Players(), msg, false)
 }

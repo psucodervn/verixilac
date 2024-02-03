@@ -10,11 +10,13 @@ import (
 
 	"github.com/rs/xid"
 	"go.uber.org/atomic"
+
+	"github.com/psucodervn/verixilac/internal/model"
+	"github.com/psucodervn/verixilac/internal/stringer"
 )
 
 type Game struct {
 	id         string
-	room       *Room
 	dealer     *PlayerInGame
 	rule       *Rule
 	players    []*PlayerInGame
@@ -57,10 +59,9 @@ func (r Result) String() string {
 	}
 }
 
-func NewGame(dealer *Player, room *Room, rule *Rule, maxBet uint64, timeout time.Duration) *Game {
+func NewGame(dealer *model.Player, rule *Rule, maxBet uint64, timeout time.Duration) *Game {
 	return &Game{
 		id:         xid.New().String(),
-		room:       room,
 		dealer:     NewPlayerInGame(dealer, 0, true),
 		rule:       rule,
 		currentIdx: -1,
@@ -125,19 +126,19 @@ func (g *Game) Deal() error {
 	return nil
 }
 
-func (g *Game) PlayerBet(p *Player, betAmount uint64) (*PlayerInGame, error) {
+func (g *Game) PlayerBet(p *model.Player, betAmount uint64) (*PlayerInGame, error) {
 	if Status(g.status.Load()) != Betting {
 		return nil, ErrGameAlreadyStarted
 	}
 
-	if p.Balance() < int64(betAmount) {
+	if p.Balance < int64(betAmount) {
 		return nil, fmt.Errorf("bạn không đủ tiền để bet %dk", betAmount)
 	}
 	if betAmount > g.maxBet.Load() {
 		return nil, fmt.Errorf("bạn chỉ được bet tối đa %dk", g.maxBet.Load())
 	}
 
-	pg := g.FindPlayer(p.ID())
+	pg := g.FindPlayer(p.ID)
 	if pg == nil {
 		pg = NewPlayerInGame(p, 0, false)
 		g.mu.Lock()
@@ -158,13 +159,13 @@ func (g *Game) PreparingBoard() string {
 
 	bf := bytes.NewBuffer(nil)
 	r := g.Rule()
-	bf.WriteString(fmt.Sprintf("Nhà cái: %s (rule: %s)\n", g.dealer.Name(), r.Name))
+	bf.WriteString(fmt.Sprintf("Nhà cái: `%s` (rule: %s)\n", g.dealer.Name, r.Name))
 	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
 	} else {
 		for _, p := range g.players {
-			bf.WriteString(fmt.Sprintf("\n  - %s: %dk", p.Name(), p.BetAmount()))
+			bf.WriteString(fmt.Sprintf("\n  - `%s`: %dk", p.Name, p.BetAmount()))
 		}
 	}
 	return bf.String()
@@ -175,13 +176,13 @@ func (g *Game) CurrentBoard() string {
 	defer g.mu.RUnlock()
 
 	bf := bytes.NewBuffer(nil)
-	bf.WriteString(fmt.Sprintf("Nhà cái: %s\n", g.dealer.CardsString()))
+	bf.WriteString(fmt.Sprintf("Nhà cái : %s\n", g.dealer.CardsString()))
 	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
 	} else {
 		for _, p := range g.players {
-			bf.WriteString(fmt.Sprintf("\n  - %s: %s", p.Name(), p.CardsString()))
+			bf.WriteString(fmt.Sprintf("\n  - %s: %s", p.Name, p.CardsString()))
 		}
 	}
 	return bf.String()
@@ -192,7 +193,7 @@ func (g *Game) PlayerBoard() string {
 	defer g.mu.RUnlock()
 	bf := bytes.NewBuffer(nil)
 	for _, p := range g.players {
-		bf.WriteString(fmt.Sprintf(" - %s: %s\n", p.Name(), p.CardsString()))
+		bf.WriteString(fmt.Sprintf(" - %s: %s\n", p.Name, p.CardsString()))
 	}
 	return bf.String()
 }
@@ -205,13 +206,17 @@ func (g *Game) ResultBoard() string {
 	bf.WriteString(fmt.Sprintf("Nhà cái: %s\n", g.dealer.Cards().String(false, true)))
 	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
 	for _, p := range g.players {
-		bf.WriteString(fmt.Sprintf("\n  - %s: %s", p.Name(), p.Cards().String(false, false)))
+		bf.WriteString(fmt.Sprintf("\n  - `%s`: %s", p.Name, p.Cards().String(false, false)))
 	}
 
-	bf.WriteString(fmt.Sprintf("\n\nTiền thưởng:\n\nNhà cái (%s): %+dk (%+dk)\n", g.dealer.Name(), g.dealer.Reward(), g.dealer.Balance()))
-	bf.WriteString(fmt.Sprintf("Người chơi:"))
+	bf.WriteString(fmt.Sprintf("\n\nTiền thưởng:\n\nNhà cái (`%s`): %+dk (%sk)\n",
+		g.dealer.Name,
+		g.dealer.Reward(),
+		stringer.FormatCurrency(g.dealer.Balance+g.dealer.Reward())))
+
+	bf.WriteString(fmt.Sprintf("Người chơi: "))
 	for _, p := range g.players {
-		bf.WriteString(fmt.Sprintf("\n  - %s: %+dk (%+dk)", p.Name(), p.Reward(), p.Balance()))
+		bf.WriteString(fmt.Sprintf("\n  - `%s`: %+dk (%sk)", p.Name, p.Reward(), stringer.FormatCurrency(p.Balance+p.Reward())))
 	}
 	return bf.String()
 }
@@ -219,6 +224,7 @@ func (g *Game) ResultBoard() string {
 func (g *Game) FindPlayer(id string) *PlayerInGame {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
+
 	return g.findPlayer(id)
 }
 
@@ -229,7 +235,7 @@ func (g *Game) RemovePlayer(id string) error {
 		return ErrGameAlreadyStarted
 	}
 	for i := range g.players {
-		if g.players[i].ID() != id {
+		if g.players[i].ID != id {
 			continue
 		}
 		g.players = append(g.players[:i], g.players[i+1:]...)
@@ -250,13 +256,7 @@ func (g *Game) Status() Status {
 	return Status(g.status.Load())
 }
 
-func (g *Game) Room() *Room {
-	g.mu.RLock()
-	defer g.mu.RUnlock()
-	return g.room
-}
-
-func (g *Game) Players() []*PlayerInGame {
+func (g *Game) PlayersInGame() []*PlayerInGame {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return g.players
@@ -279,12 +279,12 @@ func (g *Game) PlayerStand(pg *PlayerInGame) (err error) {
 		return ErrPlayerNotFound
 	}
 	if g.currentIdx >= len(g.players) {
-		if pg.ID() != g.dealer.ID() {
+		if pg.ID != g.dealer.ID {
 			return ErrYouNotPlaying
 		}
 		err = g.dealer.Stand()
 	} else {
-		if pg.ID() != g.players[g.currentIdx].ID() {
+		if pg.ID != g.players[g.currentIdx].ID {
 			return ErrYouNotPlaying
 		}
 		err = g.players[g.currentIdx].Stand()
@@ -362,11 +362,11 @@ func (g *Game) OnPlayerPlay(f func(pg *PlayerInGame)) {
 }
 
 func (g *Game) findPlayer(id string) *PlayerInGame {
-	if g.dealer.ID() == id {
+	if g.dealer.ID == id {
 		return g.dealer
 	}
 	for i := range g.players {
-		if g.players[i].ID() == id {
+		if g.players[i].ID == id {
 			return g.players[i]
 		}
 	}
@@ -418,6 +418,18 @@ func (g *Game) totalBetAmount() uint64 {
 	res := uint64(0)
 	for _, p := range g.players {
 		res += p.BetAmount()
+	}
+	return res
+}
+
+func (g *Game) Players() []model.Player {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	res := make([]model.Player, len(g.players)+1)
+	res[0] = *g.dealer.Player
+	for i, p := range g.players {
+		res[i+1] = *p.Player
 	}
 	return res
 }

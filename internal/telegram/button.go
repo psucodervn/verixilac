@@ -52,15 +52,15 @@ func MakeDealerPrepareButtons(g *game.Game) []InlineButton {
 
 func MakeDealerPlayingButtons(g *game.Game, pg *game.PlayerInGame) []InlineButton {
 	return []InlineButton{
-		{Text: "Lật bài của " + pg.Name(), Data: "/compare " + g.ID() + " " + pg.ID()},
+		{Text: "Lật bài của " + pg.Name, Data: "/compare " + g.ID() + " " + pg.ID},
 	}
 }
 
 // func MakeDealerPlayingButtons(g *game.Game) []InlineButton {
 //   var ar []InlineButton
-//   for _, p := range g.Players() {
+//   for _, p := range g.PlayersInGame() {
 //     if !p.IsDone() {
-//       ar = append(ar, InlineButton{Text: "Lật bài của " + p.Name(), Data: "/compare " + g.ID() + " " + p.ID()})
+//       ar = append(ar, InlineButton{Text: "Lật bài của " + p.Name, Data: "/compare " + g.ID() + " " + p.ID})
 //     }
 //   }
 //   return ar
@@ -86,12 +86,6 @@ func MakePlayerButton(g *game.Game, pg *game.PlayerInGame, force bool) []InlineB
 }
 
 func MakeResultButtons(g *game.Game) []InlineButton {
-	return []InlineButton{
-		{Text: "Tạo ván mới", Data: "/newgame"},
-	}
-}
-
-func MakeNewlyCreatedRoomButtons(r *game.Room) []InlineButton {
 	return []InlineButton{
 		{Text: "Tạo ván mới", Data: "/newgame"},
 	}

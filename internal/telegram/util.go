@@ -8,6 +8,7 @@ import (
 	"gopkg.in/tucnak/telebot.v2"
 
 	"github.com/psucodervn/verixilac/internal/game"
+	"github.com/psucodervn/verixilac/internal/model"
 )
 
 func ToTelebotChats(ids ...string) []*telebot.Chat {
@@ -33,29 +34,29 @@ func GetUsername(chat *telebot.Chat) string {
 	return name
 }
 
-func FilterPlayers(players []*game.Player, ids ...string) []*game.Player {
+func FilterPlayers(players []model.Player, ids ...string) []model.Player {
 	m := make(map[string]struct{})
 	for _, id := range ids {
 		m[id] = struct{}{}
 	}
-	var ps []*game.Player
+	var ps []model.Player
 	for i := 0; i < len(players); i++ {
-		if _, exists := m[players[i].ID()]; !exists {
+		if _, exists := m[players[i].ID]; !exists {
 			ps = append(ps, players[i])
 		}
 	}
 	return ps
 }
 
-func FilterInGamePlayers(players []*game.PlayerInGame, ids ...string) []*game.Player {
+func FilterInGamePlayers(players []*game.PlayerInGame, ids ...string) []*game.PlayerInGame {
 	m := make(map[string]struct{})
 	for _, id := range ids {
 		m[id] = struct{}{}
 	}
-	var ps []*game.Player
+	var ps []*game.PlayerInGame
 	for i := 0; i < len(players); i++ {
-		if _, exists := m[players[i].ID()]; !exists {
-			ps = append(ps, players[i].Player)
+		if _, exists := m[players[i].ID]; !exists {
+			ps = append(ps, players[i])
 		}
 	}
 	return ps

@@ -9,6 +9,7 @@ import (
 	"gopkg.in/tucnak/telebot.v2"
 
 	"github.com/psucodervn/verixilac/internal/game"
+	"github.com/psucodervn/verixilac/internal/model"
 )
 
 func (h *Handler) ctx(m *telebot.Message) context.Context {
@@ -20,7 +21,9 @@ func (h *Handler) ctx(m *telebot.Message) context.Context {
 }
 
 func (h *Handler) sendMessage(chat *telebot.Chat, msg string, buttons ...InlineButton) *telebot.Message {
-	options := &telebot.SendOptions{}
+	options := &telebot.SendOptions{
+		ParseMode: telebot.ModeMarkdown,
+	}
 	if len(buttons) > 0 {
 		options.ReplyMarkup = &telebot.ReplyMarkup{
 			InlineKeyboard: ToTelebotInlineButtons(buttons),
@@ -54,50 +57,69 @@ func (h *Handler) editMessage(m *telebot.Message, msg string, buttons ...InlineB
 }
 
 func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, buttons ...InlineButton) {
-	var recvs []*game.Player
+	var rcvIDs []string
 	switch receivers.(type) {
-	case []*game.Player:
-		recvs = receivers.([]*game.Player)
-	case *game.Player:
-		recvs = append(recvs, receivers.(*game.Player))
+	case []model.Player:
+		tmp := receivers.([]model.Player)
+		for i := range tmp {
+			if !tmp[i].IsBot() {
+				rcvIDs = append(rcvIDs, tmp[i].TelegramID)
+			}
+		}
+	case []*model.Player:
+		tmp := receivers.([]*model.Player)
+		for i := range tmp {
+			if !tmp[i].IsBot() {
+				rcvIDs = append(rcvIDs, tmp[i].TelegramID)
+			}
+		}
+	case *model.Player:
+		if !receivers.(*model.Player).IsBot() {
+			rcvIDs = append(rcvIDs, receivers.(*model.Player).TelegramID)
+		}
 	case []*game.PlayerInGame:
 		tmp := receivers.([]*game.PlayerInGame)
 		for i := range tmp {
-			recvs = append(recvs, tmp[i].Player)
+			if !tmp[i].Player.IsBot() {
+				rcvIDs = append(rcvIDs, tmp[i].Player.TelegramID)
+			}
 		}
 	case *game.PlayerInGame:
-		recvs = append(recvs, receivers.(*game.PlayerInGame).Player)
+		if !receivers.(*game.PlayerInGame).Player.IsBot() {
+			rcvIDs = append(rcvIDs, receivers.(*game.PlayerInGame).Player.TelegramID)
+		}
 	default:
 		log.Error().Str("type", reflect.TypeOf(receivers).String()).Msg("invalid receivers type")
 		return
 	}
 
 	wg := sync.WaitGroup{}
-	for _, p := range recvs {
+	for _, id := range rcvIDs {
 		wg.Add(1)
-		p := p
+		id := id
 
 		go func() {
 			defer wg.Done()
 
-			// log.Debug().Str("id", p.ID()).Msg("will send to")
+			// log.Debug().Str("id", id.ID).Msg("will send to")
 			var m *telebot.Message
 			var err error
 			options := &telebot.SendOptions{
 				ReplyMarkup: &telebot.ReplyMarkup{
 					InlineKeyboard: ToTelebotInlineButtons(buttons),
 				},
+				ParseMode: telebot.ModeMarkdown,
 			}
-			pm, ok := h.gameMessages.Load(p.ID())
+			pm, ok := h.gameMessages.Load(id)
 			if edit && ok && pm != nil {
 				m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
 			} else {
-				m, err = h.bot.Send(ToTelebotChat(p.ID()), msg, options)
+				m, err = h.bot.Send(ToTelebotChat(id), msg, options)
 			}
 			if err != nil {
-				log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
+				log.Err(err).Str("receiver_id", id).Str("msg", msg).Msg("send message failed")
 			} else {
-				h.gameMessages.Store(p.ID(), m)
+				h.gameMessages.Store(id, m)
 			}
 		}()
 	}
@@ -105,15 +127,20 @@ func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, button
 	wg.Wait()
 }
 
-func (h *Handler) broadcastDeal(players []*game.Player, msg string, edit bool, buttons ...InlineButton) {
+func (h *Handler) broadcastDeal(players []model.Player, msg string, edit bool, buttons ...InlineButton) {
 	options := &telebot.SendOptions{
 		ReplyMarkup: &telebot.ReplyMarkup{
 			InlineKeyboard: ToTelebotInlineButtons(buttons),
 		},
+		ParseMode: telebot.ModeMarkdown,
 	}
 
 	wg := sync.WaitGroup{}
 	for _, p := range players {
+		if p.IsBot() {
+			continue
+		}
+
 		wg.Add(1)
 		p := p
 
@@ -122,16 +149,16 @@ func (h *Handler) broadcastDeal(players []*game.Player, msg string, edit bool, b
 
 			var m *telebot.Message
 			var err error
-			pm, ok := h.dealMessages.Load(p.ID())
+			pm, ok := h.dealMessages.Load(p.ID)
 			if edit && ok && pm != nil {
 				m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
 			} else {
-				m, err = h.bot.Send(ToTelebotChat(p.ID()), msg, options)
+				m, err = h.bot.Send(ToTelebotChat(p.ID), msg, options)
 			}
 			if err != nil {
-				log.Err(err).Str("receiver", p.Name()).Str("msg", msg).Msg("send message failed")
+				log.Err(err).Str("receiver", p.Name).Str("msg", msg).Msg("send message failed")
 			} else {
-				h.dealMessages.Store(p.ID(), m)
+				h.dealMessages.Store(p.ID, m)
 			}
 		}()
 	}
@@ -140,12 +167,11 @@ func (h *Handler) broadcastDeal(players []*game.Player, msg string, edit bool, b
 }
 
 func (h *Handler) findPlayerInGame(m *telebot.Message, gameID string, playerID string) (*game.Game, *game.PlayerInGame) {
-	g := h.game.FindGame(h.ctx(m), gameID)
+	g, pg := h.game.FindPlayerInGame(gameID, playerID)
 	if g == nil {
 		h.sendMessage(m.Chat, "Không tìm thấy ván "+gameID)
 		return nil, nil
 	}
-	pg := g.FindPlayer(playerID)
 	if pg == nil {
 		h.sendMessage(m.Chat, "Không tìm thấy người chơi "+playerID)
 		return g, nil

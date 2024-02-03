@@ -239,4 +239,4 @@ fabric.properties
 .env
 verixilac
 .idea
-data/data.json
+data/*
