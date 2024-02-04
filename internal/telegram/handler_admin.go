@@ -39,7 +39,7 @@ func (h *Handler) doAdminPause(m *telebot.Message) {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return
 	}
-	h.broadcast(h.game.Players(), "‼️Server is Under Maintenance. Please wait!", false)
+	h.broadcast(h.game.AllPlayers(h.ctx(m)), "‼️Server is Under Maintenance. Please wait!", false)
 }
 
 func (h *Handler) doAdminResume(m *telebot.Message) {
@@ -47,7 +47,7 @@ func (h *Handler) doAdminResume(m *telebot.Message) {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return
 	}
-	h.broadcast(h.game.Players(), "✅ Server is Live now. Enjoy!", false)
+	h.broadcast(h.game.AllPlayers(nil), "✅ Server is Live now. Enjoy!", false)
 }
 
 func (h *Handler) doDeposit(m *telebot.Message, operator *model.Player, ss []string) {
@@ -79,5 +79,5 @@ func (h *Handler) doDeposit(m *telebot.Message, operator *model.Player, ss []str
 	if amount < 0 {
 		msg = fmt.Sprintf("💸 `%s` đã rút ra %dk.", p.Name, -amount)
 	}
-	h.broadcast(h.game.Players(), msg, false)
+	h.broadcast(h.game.AllPlayers(nil), msg, false)
 }

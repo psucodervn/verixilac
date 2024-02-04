@@ -14,7 +14,6 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/psucodervn/verixilac/internal/model"
-	"github.com/psucodervn/verixilac/internal/storage"
 )
 
 var initialBalance int
@@ -52,23 +51,23 @@ type OnPlayerHitFunc func(g *Game, p *PlayerInGame)
 type OnGameFinishFunc func(g *Game)
 type OnPlayerPlayFunc func(g *Game, pg *PlayerInGame)
 
-func NewManager(maxBet uint64, minDeal uint64, timeout time.Duration) *Manager {
+func NewManager(store Storage, maxBet uint64, minDeal uint64, timeout time.Duration) *Manager {
 	m := &Manager{
 		maxBet:        *atomic.NewUint64(maxBet),
 		minDeal:       *atomic.NewUint64(minDeal),
 		timeout:       *atomic.NewDuration(timeout),
 		canCreateGame: *atomic.NewBool(true),
-		store:         storage.NewBadgerHoldStorage("data"),
+		store:         store,
 	}
 	return m
 }
 
-func (m *Manager) PlayerRegister(ctx context.Context, id string, name string, role model.UserRole) *model.Player {
+func (m *Manager) PlayerRegister(ctx context.Context, id string, name string, role model.UserRole) (p *model.Player, existed bool) {
 	p, err := m.store.GetPlayerByID(ctx, id)
 	if err != nil {
 		if !model.IsNotFound(err) {
 			log.Ctx(ctx).Err(err).Str("id", id).Msg("get player failed")
-			return nil
+			return nil, false
 		}
 
 		// create new player
@@ -81,11 +80,12 @@ func (m *Manager) PlayerRegister(ctx context.Context, id string, name string, ro
 		}
 		if err := m.store.SavePlayer(ctx, p); err != nil {
 			log.Ctx(ctx).Err(err).Str("id", id).Msg("save player failed")
-			return nil
+			return nil, false
 		}
+		return p, false
 	}
 
-	return p
+	return p, true
 }
 
 func (m *Manager) findPlayer(ctx context.Context, id string) *model.Player {
@@ -100,8 +100,17 @@ func (m *Manager) findPlayer(ctx context.Context, id string) *model.Player {
 	return nil
 }
 
-func (m *Manager) Players() []model.Player {
-	ps, err := m.store.ListPlayers(context.TODO())
+func (m *Manager) ActivePlayers(ctx context.Context) []model.Player {
+	ps, err := m.store.ListActivePlayers(ctx)
+	if err != nil {
+		log.Err(err).Msg("list players failed")
+		return nil
+	}
+	return ps
+}
+
+func (m *Manager) AllPlayers(ctx context.Context) []model.Player {
+	ps, err := m.store.ListPlayers(ctx)
 	if err != nil {
 		log.Err(err).Msg("list players failed")
 		return nil
@@ -458,4 +467,21 @@ func (m *Manager) CurrentGame() *Game {
 	defer m.mu.RUnlock()
 
 	return m.currentGame
+}
+
+func (m *Manager) PlayerLeave(ctx context.Context, id string) error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.currentGame != nil {
+		if _, pg := m.FindPlayerInGame(m.currentGame.ID(), id); pg != nil {
+			return ErrYouAlreadyInGame
+		}
+	}
+
+	if _, err := m.store.UpdatePlayerStatus(ctx, id, model.UserStatusInactive); err != nil {
+		return err
+	}
+
+	return nil
 }

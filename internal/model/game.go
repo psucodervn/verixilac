@@ -6,13 +6,19 @@ import (
 )
 
 type (
-	UserRole uint8 // 0: normal, 1: admin
+	UserRole   uint8 // 0: normal, 1: admin
+	UserStatus uint8 // 0: active (joined), 1: inactive (left)
 )
 
 const (
 	UserRoleNormal UserRole = iota
 	UserRoleAdmin
 	UserRoleBot = 100
+)
+
+const (
+	UserStatusActive UserStatus = iota
+	UserStatusInactive
 )
 
 type (
@@ -27,6 +33,7 @@ type (
 		TelegramID string `badgerhold:"index"`
 		Name       string
 		UserRole   UserRole
+		UserStatus UserStatus
 		Balance    int64
 	}
 
@@ -43,4 +50,19 @@ func (p Player) IsAdmin() bool {
 
 func (p Player) IsBot() bool {
 	return p.UserRole == UserRoleBot || strings.HasPrefix(p.TelegramID, "BOT_")
+}
+
+func (p Player) IsActive() bool {
+	return p.UserStatus == UserStatusActive
+}
+
+func (st UserStatus) String() string {
+	switch st {
+	case UserStatusActive:
+		return "active"
+	case UserStatusInactive:
+		return "inactive"
+	default:
+		return "unknown"
+	}
 }

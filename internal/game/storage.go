@@ -2,8 +2,6 @@ package game
 
 import (
 	"context"
-	"encoding/json"
-	"io/ioutil"
 
 	"github.com/psucodervn/verixilac/internal/model"
 )
@@ -18,7 +16,9 @@ type Storage interface {
 	GetPlayerByID(ctx context.Context, id string) (*model.Player, error)
 	SavePlayer(ctx context.Context, p *model.Player) error
 	ListPlayers(ctx context.Context) ([]model.Player, error)
+	ListActivePlayers(ctx context.Context) ([]model.Player, error)
 	AddPlayerBalance(ctx context.Context, id string, amount int64) (*model.Player, error)
+	UpdatePlayerStatus(ctx context.Context, id string, status model.UserStatus) (*model.Player, error)
 }
 
 type (
@@ -40,17 +40,17 @@ type (
 )
 
 func (m *Manager) LoadFromStorage() error {
-	b, err := ioutil.ReadFile(storageFile)
-	if err != nil {
-		return err
-	}
-	var data stData
-	if err = json.Unmarshal(b, &data); err != nil {
-		return err
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	// b, err := ioutil.ReadFile(storageFile)
+	// if err != nil {
+	// 	return err
+	// }
+	// var data stData
+	// if err = json.Unmarshal(b, &data); err != nil {
+	// 	return err
+	// }
+	//
+	// m.mu.Lock()
+	// defer m.mu.Unlock()
 
 	// for _, stP := range data.PlayersInGame {
 	// 	p := NewPlayer(stP.ID, stP.Name, stP.Balance)

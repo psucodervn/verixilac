@@ -12,6 +12,16 @@ type BadgerHoldStorage struct {
 	store *badgerhold.Store
 }
 
+func (b *BadgerHoldStorage) UpdatePlayerStatus(ctx context.Context, id string, status model.UserStatus) (*model.Player, error) {
+	p := (*model.Player)(nil)
+	err := b.store.UpdateMatching(&model.Player{}, badgerhold.Where("ID").Eq(id), func(record interface{}) error {
+		p = record.(*model.Player)
+		p.UserStatus = status
+		return nil
+	})
+	return p, err
+}
+
 func (b *BadgerHoldStorage) AddPlayerBalance(ctx context.Context, id string, amount int64) (*model.Player, error) {
 	p := (*model.Player)(nil)
 	err := b.store.UpdateMatching(&model.Player{}, badgerhold.Where("ID").Eq(id), func(record interface{}) error {
@@ -29,6 +39,12 @@ func (b *BadgerHoldStorage) ListPlayers(ctx context.Context) ([]model.Player, er
 	return players, err
 }
 
+func (b *BadgerHoldStorage) ListActivePlayers(ctx context.Context) ([]model.Player, error) {
+	var players []model.Player
+	err := b.store.Find(&players, badgerhold.Where("UserStatus").Eq(model.UserStatusActive))
+	return players, err
+}
+
 func (b *BadgerHoldStorage) SavePlayer(ctx context.Context, p *model.Player) error {
 	if len(p.ID) == 0 {
 		p.ID = p.TelegramID
@@ -40,6 +56,7 @@ func NewBadgerHoldStorage(dir string) *BadgerHoldStorage {
 	opts := badgerhold.DefaultOptions
 	opts.Dir = dir
 	opts.ValueDir = dir
+	opts.NumVersionsToKeep = 1
 	store, err := badgerhold.Open(opts)
 	if err != nil {
 		panic(err)

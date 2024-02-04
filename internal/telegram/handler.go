@@ -1,6 +1,7 @@
 package telegram
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -154,7 +155,7 @@ func (h *Handler) doCancel(m *telebot.Message, onQuery bool) {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return
 	}
-	h.broadcast(h.game.Players(), pg.Name+" đã huỷ ván này", true, InlineButton{
+	h.broadcast(h.game.ActivePlayers(ctx), pg.Name+" đã huỷ ván này", true, InlineButton{
 		Text: "Tạo ván mới", Data: "/newgame",
 	})
 }
@@ -167,13 +168,17 @@ func (h *Handler) onNewGame(g *game.Game) {
 	h.broadcastDeal([]model.Player{*d.Player}, msg, false, MakeDealerPrepareButtons(g)...)
 
 	// send to members
-	players := FilterPlayers(h.game.Players(), d.ID)
+	players := FilterPlayers(h.game.ActivePlayers(context.TODO()), d.ID)
 	h.broadcastDeal(players, msg, false, MakeBetButtons(g)...)
 }
 
 func (h *Handler) onPlayerJoin(p *model.Player) {
-	players := FilterPlayers(h.game.Players(), p.ID)
-	h.broadcast(players, p.Name+" vừa vào phòng", false)
+	h.broadcast(h.game.AllPlayers(context.TODO()), p.Name+" vừa vào sòng", false)
+}
+
+func (h *Handler) onPlayerLeave(p *model.Player) {
+	players := FilterPlayers(h.game.AllPlayers(context.TODO()), p.ID)
+	h.broadcast(players, p.Name+" vừa ra khỏi sòng", false)
 }
 
 func (h *Handler) onPlayerBet(g *game.Game, p *game.PlayerInGame) {
@@ -181,7 +186,7 @@ func (h *Handler) onPlayerBet(g *game.Game, p *game.PlayerInGame) {
 	dealer := g.Dealer()
 	h.broadcastDeal([]model.Player{*dealer.Player}, msg, true, MakeDealerPrepareButtons(g)...)
 
-	players := FilterPlayers(h.game.Players(), dealer.ID)
+	players := FilterPlayers(h.game.ActivePlayers(context.TODO()), dealer.ID)
 	h.broadcastDeal(players, msg, true, MakeBetButtons(g)...)
 }
 
@@ -273,7 +278,12 @@ func (h *Handler) joinServer(m *telebot.Message, isBot ...bool) *model.Player {
 		name = "Bot #" + id
 		role = model.UserRoleBot
 	}
-	return h.game.PlayerRegister(h.ctx(m), id, name, role)
+
+	p, existed := h.game.PlayerRegister(h.ctx(m), id, name, role)
+	if !existed {
+		h.onPlayerJoin(p)
+	}
+	return p
 }
 
 func (h *Handler) onPlayerStand(g *game.Game, pg *game.PlayerInGame) {

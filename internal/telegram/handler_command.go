@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/cast"
 	"gopkg.in/tucnak/telebot.v2"
 
 	"github.com/psucodervn/verixilac/internal/game"
@@ -29,10 +30,10 @@ var (
 			Text:        "join",
 			Description: "Tham gia vào phòng chờ",
 		},
-		{
-			Text:        "leave",
-			Description: "Rời phòng chờ",
-		},
+		// {
+		// 	Text:        "leave",
+		// 	Description: "Rời phòng chờ",
+		// },
 		{
 			Text:        "pass",
 			Description: "Cho qua lượt",
@@ -77,7 +78,7 @@ func (h *Handler) Start() (err error) {
 
 	h.bot.Handle("/start", h.CmdStart)
 	h.bot.Handle("/newgame", h.CmdNewGame)
-	// h.bot.Handle("/join", h.CmdJoin)
+	h.bot.Handle("/join", h.CmdJoin)
 	// h.bot.Handle("/leave", h.CmdLeave)
 	h.bot.Handle("/endgame", h.CmdEndGame)
 	h.bot.Handle("/save", h.CmdSave)
@@ -97,8 +98,8 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle(telebot.OnText, func(m *telebot.Message) {
 		log.Info().Msg(m.Text + " " + GetUsername(m.Chat))
 		p := h.joinServer(m)
-		ps := FilterPlayers(h.game.Players(), p.ID)
-		h.sendChat(ps, "🗣 "+GetUsername(m.Chat)+": "+m.Text)
+		ps := FilterPlayers(h.game.AllPlayers(h.ctx(m)), p.ID)
+		h.sendChat(ps, "📣 "+GetUsername(m.Chat)+": "+m.Text)
 	})
 
 	h.bot.Start()
@@ -107,6 +108,17 @@ func (h *Handler) Start() (err error) {
 
 func (h *Handler) CmdStart(m *telebot.Message) {
 	h.joinServer(m)
+}
+
+func (h *Handler) CmdJoin(m *telebot.Message) {
+	h.joinServer(m)
+}
+
+func (h *Handler) CmdLeave(m *telebot.Message) {
+	id := cast.ToString(m.Chat.ID)
+	if err := h.game.PlayerLeave(h.ctx(m), id); err != nil {
+		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+	}
 }
 
 func (h *Handler) CmdListRules(m *telebot.Message) {
@@ -138,8 +150,9 @@ func (h *Handler) CmdStatus(m *telebot.Message) {
 		"- ID: `%s`\n"+
 		"- Name: %s\n"+
 		"- Balance: `%s` k\n"+
-		"- Rule: %s (%s)\n",
-		p.ID, p.Name, stringer.FormatCurrency(p.Balance), r.ID, r.Name)
+		"- Rule: %s (%s)\n"+
+		"- Status: %s\n",
+		p.ID, p.Name, stringer.FormatCurrency(p.Balance), r.ID, r.Name, p.UserStatus)
 	h.sendMessage(m.Chat, msg)
 }
 
