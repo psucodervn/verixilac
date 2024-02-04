@@ -49,7 +49,7 @@ func (b *BadgerHoldStorage) SavePlayer(ctx context.Context, p *model.Player) err
 	if len(p.ID) == 0 {
 		p.ID = p.TelegramID
 	}
-	return b.store.Insert(p.ID, p)
+	return b.store.Upsert(p.ID, p)
 }
 
 func NewBadgerHoldStorage(dir string) *BadgerHoldStorage {
