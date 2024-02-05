@@ -373,11 +373,6 @@ func (m *Manager) FinishGame(ctx context.Context, g *Game, force bool) error {
 		}
 	}
 
-	for _, p := range g.PlayersInGame() {
-		_, _ = m.store.AddPlayerBalance(ctx, p.Player.ID, p.Reward())
-	}
-	_, _ = m.store.AddPlayerBalance(ctx, g.Dealer().Player.ID, g.Dealer().Reward())
-
 	m.mu.Lock()
 	f := m.onGameFinishFunc
 	m.currentGame = nil

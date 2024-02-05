@@ -68,11 +68,7 @@ func (h *Handler) onCallback(q *telebot.Callback) {
 
 func (h *Handler) doJoin(m *telebot.Message, onQuery bool) {
 	_ = h.getPlayer(m)
-	if onQuery {
-		h.editMessage(m, "Bạn đã vào sòng")
-	} else {
-		h.sendMessage(m.Chat, "Bạn đã vào sòng")
-	}
+	h.sendMessage(m.Chat, "Bạn đã vào sòng")
 }
 
 func (h *Handler) doBet(m *telebot.Message, onQuery bool) {
@@ -107,7 +103,7 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	h.broadcastDeal(g.Players(), "Chốt deal:\n\n"+g.PreparingBoard(), true)
+	h.broadcast(g.Players(), "Chốt deal:\n\n"+g.PreparingBoard(), true)
 
 	// send cards
 	for _, pg := range g.PlayersInGame() {
@@ -167,11 +163,11 @@ func (h *Handler) onNewGame(g *game.Game) {
 
 	// send to dealer
 	d := g.Dealer()
-	h.broadcastDeal([]model.Player{*d.Player}, msg, false, MakeDealerPrepareButtons(g)...)
+	h.broadcast(d.Player, msg, false, MakeDealerPrepareButtons(g)...)
 
 	// send to members
 	players := FilterPlayers(h.game.ActivePlayers(context.TODO()), d.ID)
-	h.broadcastDeal(players, msg, false, MakeBetButtons(g)...)
+	h.broadcast(players, msg, false, MakeBetButtons(g)...)
 }
 
 func (h *Handler) onPlayerJoin(p *model.Player) {
@@ -185,10 +181,10 @@ func (h *Handler) onPlayerLeave(p *model.Player) {
 func (h *Handler) onPlayerBet(g *game.Game, p *game.PlayerInGame) {
 	msg := "Bắt đầu ván mới, hãy tham gia ngay!\n\n" + g.PreparingBoard()
 	dealer := g.Dealer()
-	h.broadcastDeal([]model.Player{*dealer.Player}, msg, true, MakeDealerPrepareButtons(g)...)
+	h.broadcast(dealer.Player, msg, true, MakeDealerPrepareButtons(g)...)
 
 	players := FilterPlayers(h.game.ActivePlayers(context.TODO()), dealer.ID)
-	h.broadcastDeal(players, msg, true, MakeBetButtons(g)...)
+	h.broadcast(players, msg, true, MakeBetButtons(g)...)
 }
 
 func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
@@ -270,7 +266,6 @@ func (h *Handler) doHit(m *telebot.Message, isBot bool) bool {
 	return true
 }
 
-// getPlayer check and register user
 func (h *Handler) getPlayer(m *telebot.Message, isBot ...bool) *model.Player {
 	id := cast.ToString(m.Chat.ID)
 	p, err := h.store.GetPlayerByID(h.ctx(m), id)
@@ -281,6 +276,7 @@ func (h *Handler) getPlayer(m *telebot.Message, isBot ...bool) *model.Player {
 	return p
 }
 
+// joinServer check and register user
 func (h *Handler) joinServer(m *telebot.Message, isBot ...bool) *model.Player {
 	id := cast.ToString(m.Chat.ID)
 	name := GetUsername(m.Chat)
@@ -371,9 +367,16 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 }
 
 func (h *Handler) onGameFinish(g *game.Game) {
+	ctx := context.TODO()
+
+	for _, p := range g.PlayersInGame() {
+		_, _ = h.store.AddPlayerBalance(ctx, p.Player.ID, p.Reward())
+	}
+	_, _ = h.store.AddPlayerBalance(ctx, g.Dealer().Player.ID, g.Dealer().Reward())
+
 	// _ = h.game.SaveToStorage()
 	msg := "Kết quả ván chơi!\n\n" + g.ResultBoard()
-	h.broadcast(g.Players(), msg, false, MakeResultButtons(g)...)
+	h.broadcast(g.AllPlayers(), msg, false, MakeResultButtons(g)...)
 }
 
 func (h *Handler) onPlayerPlay(g *game.Game, pg *game.PlayerInGame) {

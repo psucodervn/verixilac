@@ -414,14 +414,6 @@ func (g *Game) Rule() *Rule {
 	return g.rule
 }
 
-func (g *Game) totalBetAmount() uint64 {
-	res := uint64(0)
-	for _, p := range g.players {
-		res += p.BetAmount()
-	}
-	return res
-}
-
 func (g *Game) Players() []model.Player {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -430,6 +422,14 @@ func (g *Game) Players() []model.Player {
 	res[0] = *g.dealer.Player
 	for i, p := range g.players {
 		res[i+1] = *p.Player
+	}
+	return res
+}
+
+func (g *Game) totalBetAmount() uint64 {
+	res := uint64(0)
+	for _, p := range g.players {
+		res += p.BetAmount()
 	}
 	return res
 }

@@ -44,6 +44,14 @@ type (
 	}
 )
 
+func (p Player) GetID() string {
+	return p.ID
+}
+
+func (p Player) GetName() string {
+	return p.Name
+}
+
 func (p Player) IsAdmin() bool {
 	return p.UserRole == UserRoleAdmin || len(p.TelegramID) > 0 && p.TelegramID == os.Getenv("ADMIN_TELEGRAM_ID")
 }

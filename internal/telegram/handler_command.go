@@ -64,10 +64,6 @@ func (h *Handler) Start() (err error) {
 		return
 	}
 
-	if err = h.game.LoadFromStorage(); err != nil {
-		log.Err(err).Msg("load data failed")
-	}
-
 	h.game.OnNewGame(h.onNewGame)
 	h.game.OnPlayerJoin(h.onPlayerJoin)
 	h.game.OnPlayerLeave(h.onPlayerLeave)
@@ -178,12 +174,6 @@ func (h *Handler) CmdStatus(m *telebot.Message) {
 	h.sendMessage(m.Chat, msg)
 }
 
-func (h *Handler) CmdSave(m *telebot.Message) {
-	if err := h.game.SaveToStorage(); err != nil {
-		h.sendMessage(m.Chat, "Save failed: "+err.Error())
-	}
-}
-
 func (h *Handler) CmdEndGame(m *telebot.Message) {
 	h.doEndGame(m, false)
 }
@@ -198,7 +188,7 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 
 	p := h.getPlayer(m)
 	if p == nil || !p.IsActive() {
-		h.sendMessage(m.Chat, "Bạn chưa vào phòng chờ")
+		h.sendMessage(m.Chat, "Bạn chưa vào sòng")
 		return
 	}
 

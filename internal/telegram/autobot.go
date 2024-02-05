@@ -39,6 +39,9 @@ func fakePlay(h *Handler, g *game.Game, count int) {
 func fakeBet(ctx context.Context, h *Handler, g *game.Game, count int) {
 	for i := 1; i <= count; i++ {
 		botP1 := &model.Player{ID: fmt.Sprint(i), Name: fmt.Sprint("Bot #", i), Balance: 1000, UserRole: model.UserRoleBot}
+		if p, _ := h.game.PlayerRegister(ctx, botP1.ID, botP1.Name, botP1.UserRole); p == nil {
+			log.Error().Msg("cannot register bot")
+		}
 		if err := h.game.PlayerBet(ctx, g.ID(), botP1, uint64(20*i)); err != nil {
 			log.Err(err).Msg("fakeBet")
 		}

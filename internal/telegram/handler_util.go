@@ -21,6 +21,11 @@ func (h *Handler) ctx(m *telebot.Message) context.Context {
 }
 
 func (h *Handler) sendMessage(chat *telebot.Chat, msg string, buttons ...InlineButton) *telebot.Message {
+	// for testing purpose
+	if chat.ID >= 0 && chat.ID <= 10 {
+		return nil
+	}
+
 	options := &telebot.SendOptions{
 		ParseMode: telebot.ModeMarkdown,
 	}
@@ -93,6 +98,13 @@ func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, button
 		return
 	}
 
+	options := &telebot.SendOptions{
+		ReplyMarkup: &telebot.ReplyMarkup{
+			InlineKeyboard: ToTelebotInlineButtons(buttons),
+		},
+		ParseMode: telebot.ModeMarkdown,
+	}
+
 	wg := sync.WaitGroup{}
 	for _, id := range rcvIDs {
 		wg.Add(1)
@@ -101,15 +113,8 @@ func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, button
 		go func() {
 			defer wg.Done()
 
-			// log.Debug().Str("id", id.ID).Msg("will send to")
 			var m *telebot.Message
 			var err error
-			options := &telebot.SendOptions{
-				ReplyMarkup: &telebot.ReplyMarkup{
-					InlineKeyboard: ToTelebotInlineButtons(buttons),
-				},
-				ParseMode: telebot.ModeMarkdown,
-			}
 			pm, ok := h.gameMessages.Load(id)
 			if edit && ok && pm != nil {
 				m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
@@ -120,45 +125,6 @@ func (h *Handler) broadcast(receivers interface{}, msg string, edit bool, button
 				log.Err(err).Str("receiver_id", id).Str("msg", msg).Msg("send message failed")
 			} else {
 				h.gameMessages.Store(id, m)
-			}
-		}()
-	}
-
-	wg.Wait()
-}
-
-func (h *Handler) broadcastDeal(players []model.Player, msg string, edit bool, buttons ...InlineButton) {
-	options := &telebot.SendOptions{
-		ReplyMarkup: &telebot.ReplyMarkup{
-			InlineKeyboard: ToTelebotInlineButtons(buttons),
-		},
-		ParseMode: telebot.ModeMarkdown,
-	}
-
-	wg := sync.WaitGroup{}
-	for _, p := range players {
-		if p.IsBot() {
-			continue
-		}
-
-		wg.Add(1)
-		p := p
-
-		go func() {
-			defer wg.Done()
-
-			var m *telebot.Message
-			var err error
-			pm, ok := h.dealMessages.Load(p.ID)
-			if edit && ok && pm != nil {
-				m, err = h.bot.Edit(pm.(*telebot.Message), msg, options)
-			} else {
-				m, err = h.bot.Send(ToTelebotChat(p.ID), msg, options)
-			}
-			if err != nil {
-				log.Err(err).Str("receiver", p.Name).Str("msg", msg).Msg("send message failed")
-			} else {
-				h.dealMessages.Store(p.ID, m)
 			}
 		}()
 	}
@@ -177,8 +143,4 @@ func (h *Handler) findPlayerInGame(m *telebot.Message, gameID string, playerID s
 		return g, nil
 	}
 	return g, pg
-}
-
-type Playable interface {
-	ID() string
 }
