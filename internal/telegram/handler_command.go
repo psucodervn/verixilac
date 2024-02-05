@@ -135,6 +135,7 @@ func (h *Handler) CmdRoom(m *telebot.Message) {
 		if !p.IsActive() {
 			bf.WriteString(" (offline)")
 		}
+		bf.WriteString("\n")
 	}
 	h.sendMessage(m.Chat, bf.String())
 }
