@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	"context"
+	"bytes"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -81,12 +81,11 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/newgame", h.CmdNewGame)
 	h.bot.Handle("/join", h.CmdJoin)
 	h.bot.Handle("/leave", h.CmdLeave)
+	h.bot.Handle("/room", h.CmdRoom)
 	h.bot.Handle("/endgame", h.CmdEndGame)
-	h.bot.Handle("/save", h.CmdSave)
 	h.bot.Handle("/pass", h.CmdPass)
 	h.bot.Handle("/status", h.CmdStatus)
 	h.bot.Handle("/rules", h.CmdListRules)
-	h.bot.Handle("/setrule", h.CmdSetRule)
 	h.bot.Handle("/history", h.CmdHistory)
 	h.bot.Handle("/admin", h.CmdAdmin)
 
@@ -122,6 +121,24 @@ func (h *Handler) CmdLeave(m *telebot.Message) {
 	}
 }
 
+func (h *Handler) CmdRoom(m *telebot.Message) {
+	ps, err := h.store.ListPlayers(h.ctx(m))
+	if err != nil {
+		h.sendMessage(m.Chat, "Lỗi: "+err.Error())
+		return
+	}
+
+	bf := bytes.NewBuffer(nil)
+	bf.WriteString("Danh sách người chơi:\n")
+	for _, p := range ps {
+		bf.WriteString(fmt.Sprintf("- %s (`%s`): %sk", p.Name, p.ID, stringer.FormatCurrency(p.Balance)))
+		if !p.IsActive() {
+			bf.WriteString(" (offline)")
+		}
+	}
+	h.sendMessage(m.Chat, bf.String())
+}
+
 func (h *Handler) CmdListRules(m *telebot.Message) {
 	h.sendMessage(m.Chat, game.RuleListText)
 }
@@ -140,8 +157,7 @@ func (h *Handler) CmdSetRule(m *telebot.Message) {
 }
 
 func (h *Handler) CmdHistory(m *telebot.Message) {
-	_ = h.getPlayer(m)
-	h.sendMessage(m.Chat, h.game.ListPlayers(context.Background()))
+	h.sendMessage(m.Chat, "Chức năng tạm thời bị vô hiệu hóa")
 }
 
 func (h *Handler) CmdStatus(m *telebot.Message) {
@@ -180,6 +196,10 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 	defer h.mu.Unlock()
 
 	p := h.getPlayer(m)
+	if p == nil || !p.IsActive() {
+		h.sendMessage(m.Chat, "Bạn chưa vào phòng chờ")
+		return
+	}
 
 	g, err := h.game.NewGame(p)
 	if err != nil {

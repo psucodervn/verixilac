@@ -35,7 +35,7 @@ func (b *BadgerHoldStorage) AddPlayerBalance(ctx context.Context, id string, amo
 func (b *BadgerHoldStorage) ListPlayers(ctx context.Context) ([]model.Player, error) {
 	var players []model.Player
 	q := &badgerhold.Query{}
-	err := b.store.Find(&players, q)
+	err := b.store.Find(&players, q.SortBy("UserStatus", "Balance", "Name"))
 	return players, err
 }
 
