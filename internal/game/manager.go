@@ -36,6 +36,7 @@ type Manager struct {
 	mu                sync.RWMutex
 	onNewGameFunc     OnNewGameFunc
 	onPlayerJoinFunc  OnPlayerJoinFunc
+	onPlayerLeaveFunc OnPlayerLeaveFunc
 	onPlayerBetFunc   OnPlayerBetFunc
 	onPlayerStandFunc OnPlayerStandFunc
 	onPlayerHitFunc   OnPlayerHitFunc
@@ -45,6 +46,7 @@ type Manager struct {
 
 type OnNewGameFunc func(g *Game)
 type OnPlayerJoinFunc func(p *model.Player)
+type OnPlayerLeaveFunc func(p *model.Player)
 type OnPlayerBetFunc func(g *Game, p *PlayerInGame)
 type OnPlayerStandFunc func(g *Game, p *PlayerInGame)
 type OnPlayerHitFunc func(g *Game, p *PlayerInGame)
@@ -62,7 +64,7 @@ func NewManager(store Storage, maxBet uint64, minDeal uint64, timeout time.Durat
 	return m
 }
 
-func (m *Manager) PlayerRegister(ctx context.Context, id string, name string, role model.UserRole) (p *model.Player, existed bool) {
+func (m *Manager) PlayerRegister(ctx context.Context, id string, name string, role model.UserRole) (p *model.Player, joined bool) {
 	p, err := m.store.GetPlayerByID(ctx, id)
 	if err != nil {
 		if !model.IsNotFound(err) {
@@ -80,6 +82,14 @@ func (m *Manager) PlayerRegister(ctx context.Context, id string, name string, ro
 		}
 		if err := m.store.SavePlayer(ctx, p); err != nil {
 			log.Ctx(ctx).Err(err).Str("id", id).Msg("save player failed")
+			return nil, false
+		}
+		return p, false
+	}
+
+	if !p.IsActive() {
+		if _, err := m.store.UpdatePlayerStatus(ctx, p.ID, model.UserStatusActive); err != nil {
+			log.Ctx(ctx).Err(err).Str("id", id).Msg("update player status failed")
 			return nil, false
 		}
 		return p, false
@@ -152,6 +162,12 @@ func (m *Manager) OnPlayerJoin(f OnPlayerJoinFunc) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.onPlayerJoinFunc = f
+}
+
+func (m *Manager) OnPlayerLeave(f OnPlayerLeaveFunc) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.onPlayerLeaveFunc = f
 }
 
 func (m *Manager) OnPlayerBet(f OnPlayerBetFunc) {
@@ -473,14 +489,25 @@ func (m *Manager) PlayerLeave(ctx context.Context, id string) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	if p, _ := m.store.GetPlayerByID(ctx, id); p == nil {
+		return ErrPlayerNotFound
+	} else if !p.IsActive() {
+		return nil
+	}
+
 	if m.currentGame != nil {
 		if _, pg := m.FindPlayerInGame(m.currentGame.ID(), id); pg != nil {
 			return ErrYouAlreadyInGame
 		}
 	}
 
-	if _, err := m.store.UpdatePlayerStatus(ctx, id, model.UserStatusInactive); err != nil {
+	p, err := m.store.UpdatePlayerStatus(ctx, id, model.UserStatusInactive)
+	if err != nil {
 		return err
+	}
+
+	if m.onPlayerLeaveFunc != nil {
+		m.onPlayerLeaveFunc(p)
 	}
 
 	return nil

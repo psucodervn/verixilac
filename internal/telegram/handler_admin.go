@@ -13,7 +13,7 @@ import (
 )
 
 func (h *Handler) CmdAdmin(m *telebot.Message) {
-	p := h.joinServer(m)
+	p := h.getPlayer(m)
 	if !p.IsAdmin() {
 		h.sendMessage(m.Chat, "Bạn không có quyền admin")
 		return

@@ -63,7 +63,7 @@ func run(cmd *cobra.Command, args []string) {
 		os.Exit(0)
 	}()
 
-	bh := telegram.NewHandler(manager, bot)
+	bh := telegram.NewHandler(manager, bot, store)
 	if err := bh.Start(); err != nil {
 		log.Fatal().Err(err).Msg("failed to start bot handler")
 	}

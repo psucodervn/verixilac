@@ -16,8 +16,9 @@ import (
 )
 
 type Handler struct {
-	game *game.Manager
-	bot  *telebot.Bot
+	game  *game.Manager
+	bot   *telebot.Bot
+	store game.Storage
 
 	gameMessages sync.Map
 	dealMessages sync.Map
@@ -25,10 +26,11 @@ type Handler struct {
 	mu sync.RWMutex
 }
 
-func NewHandler(manager *game.Manager, bot *telebot.Bot) *Handler {
+func NewHandler(manager *game.Manager, bot *telebot.Bot, store game.Storage) *Handler {
 	return &Handler{
-		game: manager,
-		bot:  bot,
+		game:  manager,
+		bot:   bot,
+		store: store,
 	}
 }
 
@@ -65,7 +67,7 @@ func (h *Handler) onCallback(q *telebot.Callback) {
 }
 
 func (h *Handler) doJoin(m *telebot.Message, onQuery bool) {
-	_ = h.joinServer(m)
+	_ = h.getPlayer(m)
 	if onQuery {
 		h.editMessage(m, "Bạn đã vào sòng")
 	} else {
@@ -80,7 +82,7 @@ func (h *Handler) doBet(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	p := h.joinServer(m)
+	p := h.getPlayer(m)
 	ctx := h.ctx(m)
 	gameID := strings.TrimSpace(ar[0])
 
@@ -140,7 +142,7 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 }
 
 func (h *Handler) doCancel(m *telebot.Message, onQuery bool) {
-	p := h.joinServer(m)
+	p := h.getPlayer(m)
 	gameID := strings.TrimSpace(m.Payload)
 	ctx := h.ctx(m)
 	g, pg := h.findPlayerInGame(m, gameID, p.ID)
@@ -177,8 +179,7 @@ func (h *Handler) onPlayerJoin(p *model.Player) {
 }
 
 func (h *Handler) onPlayerLeave(p *model.Player) {
-	players := FilterPlayers(h.game.AllPlayers(context.TODO()), p.ID)
-	h.broadcast(players, p.Name+" vừa ra khỏi sòng", false)
+	h.broadcast(h.game.AllPlayers(context.TODO()), p.Name+" vừa ra khỏi sòng", false)
 }
 
 func (h *Handler) onPlayerBet(g *game.Game, p *game.PlayerInGame) {
@@ -191,7 +192,7 @@ func (h *Handler) onPlayerBet(g *game.Game, p *game.PlayerInGame) {
 }
 
 func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
-	p := h.joinServer(m)
+	p := h.getPlayer(m)
 	gameID := strings.TrimSpace(m.Payload)
 	if len(gameID) == 0 {
 		g := h.game.CurrentGame()
@@ -225,7 +226,7 @@ func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
 }
 
 func (h *Handler) doStand(m *telebot.Message, onQuery bool, isBot bool) bool {
-	p := h.joinServer(m, isBot)
+	p := h.getPlayer(m, isBot)
 	gameID := strings.TrimSpace(m.Payload)
 	g, pg := h.findPlayerInGame(m, gameID, p.ID)
 	if g == nil || pg == nil {
@@ -245,7 +246,7 @@ func (h *Handler) doStand(m *telebot.Message, onQuery bool, isBot bool) bool {
 }
 
 func (h *Handler) doHit(m *telebot.Message, isBot bool) bool {
-	p := h.joinServer(m, isBot)
+	p := h.getPlayer(m, isBot)
 	force := false
 	ar := strings.Split(strings.TrimSpace(m.Payload), " ")
 	if len(ar) >= 2 {
@@ -269,7 +270,17 @@ func (h *Handler) doHit(m *telebot.Message, isBot bool) bool {
 	return true
 }
 
-// joinServer check and register user
+// getPlayer check and register user
+func (h *Handler) getPlayer(m *telebot.Message, isBot ...bool) *model.Player {
+	id := cast.ToString(m.Chat.ID)
+	p, err := h.store.GetPlayerByID(h.ctx(m), id)
+	if err != nil {
+		log.Err(err).Str("user_id", id).Msg("get player failed")
+		return nil
+	}
+	return p
+}
+
 func (h *Handler) joinServer(m *telebot.Message, isBot ...bool) *model.Player {
 	id := cast.ToString(m.Chat.ID)
 	name := GetUsername(m.Chat)
@@ -304,7 +315,7 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	p := h.joinServer(m)
+	p := h.getPlayer(m)
 	g, dealer := h.findPlayerInGame(m, ar[0], p.ID)
 	if g == nil || dealer == nil {
 		return

@@ -30,10 +30,10 @@ var (
 			Text:        "join",
 			Description: "Tham gia vào phòng chờ",
 		},
-		// {
-		// 	Text:        "leave",
-		// 	Description: "Rời phòng chờ",
-		// },
+		{
+			Text:        "leave",
+			Description: "Rời phòng chờ",
+		},
 		{
 			Text:        "pass",
 			Description: "Cho qua lượt",
@@ -70,6 +70,7 @@ func (h *Handler) Start() (err error) {
 
 	h.game.OnNewGame(h.onNewGame)
 	h.game.OnPlayerJoin(h.onPlayerJoin)
+	h.game.OnPlayerLeave(h.onPlayerLeave)
 	h.game.OnPlayerBet(h.onPlayerBet)
 	h.game.OnPlayerStand(h.onPlayerStand)
 	h.game.OnPlayerHit(h.onPlayerHit)
@@ -79,7 +80,7 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/start", h.CmdStart)
 	h.bot.Handle("/newgame", h.CmdNewGame)
 	h.bot.Handle("/join", h.CmdJoin)
-	// h.bot.Handle("/leave", h.CmdLeave)
+	h.bot.Handle("/leave", h.CmdLeave)
 	h.bot.Handle("/endgame", h.CmdEndGame)
 	h.bot.Handle("/save", h.CmdSave)
 	h.bot.Handle("/pass", h.CmdPass)
@@ -97,7 +98,7 @@ func (h *Handler) Start() (err error) {
 
 	h.bot.Handle(telebot.OnText, func(m *telebot.Message) {
 		log.Info().Msg(m.Text + " " + GetUsername(m.Chat))
-		p := h.joinServer(m)
+		p := h.getPlayer(m)
 		ps := FilterPlayers(h.game.AllPlayers(h.ctx(m)), p.ID)
 		h.sendChat(ps, "📣 "+GetUsername(m.Chat)+": "+m.Text)
 	})
@@ -127,7 +128,7 @@ func (h *Handler) CmdListRules(m *telebot.Message) {
 
 func (h *Handler) CmdSetRule(m *telebot.Message) {
 	h.sendMessage(m.Chat, "Chức năng tạm thời bị vô hiệu hóa")
-	// p := h.joinServer(m)
+	// p := h.getPlayer(m)
 	// ruleID := strings.TrimSpace(m.Payload)
 	// r, ok := game.DefaultRules[ruleID]
 	// if !ok {
@@ -139,12 +140,16 @@ func (h *Handler) CmdSetRule(m *telebot.Message) {
 }
 
 func (h *Handler) CmdHistory(m *telebot.Message) {
-	_ = h.joinServer(m)
+	_ = h.getPlayer(m)
 	h.sendMessage(m.Chat, h.game.ListPlayers(context.Background()))
 }
 
 func (h *Handler) CmdStatus(m *telebot.Message) {
-	p := h.joinServer(m)
+	p := h.getPlayer(m)
+	if p == nil {
+		p = h.joinServer(m)
+	}
+
 	r := game.DefaultRule
 	msg := fmt.Sprintf("Thông tin của bạn:\n"+
 		"- ID: `%s`\n"+
@@ -174,7 +179,7 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	p := h.joinServer(m)
+	p := h.getPlayer(m)
 
 	g, err := h.game.NewGame(p)
 	if err != nil {
@@ -188,7 +193,7 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 }
 
 func (h *Handler) CmdPass(m *telebot.Message) {
-	// p := h.joinServer(m)
+	// p := h.getPlayer(m)
 	pg, err := h.game.PlayerPass(h.ctx(m))
 	if err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
