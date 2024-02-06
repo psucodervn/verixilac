@@ -10,7 +10,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"gopkg.in/tucnak/telebot.v2"
+	"gopkg.in/telebot.v3"
 
 	"github.com/psucodervn/verixilac/internal/config"
 	"github.com/psucodervn/verixilac/internal/game"
@@ -39,7 +39,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	bot, err := telebot.NewBot(telebot.Settings{
 		Token:  cfg.Telegram.BotToken,
-		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
+		Poller: &telebot.LongPoller{Timeout: 3 * time.Second},
 	})
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to telegram bot")

@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
-	"gopkg.in/tucnak/telebot.v2"
+	"gopkg.in/telebot.v3"
 
 	"github.com/psucodervn/verixilac/internal/game"
 	"github.com/psucodervn/verixilac/internal/stringer"
@@ -85,43 +85,52 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/history", h.CmdHistory)
 	h.bot.Handle("/admin", h.CmdAdmin)
 
-	h.bot.Handle(telebot.OnQuery, func(q *telebot.Query) {
+	h.bot.Handle(telebot.OnQuery, func(ctx telebot.Context) error {
+		q := ctx.Query()
 		log.Info().Interface("q", q).Msg("on query")
+		return nil
 	})
 
 	h.bot.Handle(telebot.OnCallback, h.onCallback)
 
-	h.bot.Handle(telebot.OnText, func(m *telebot.Message) {
+	h.bot.Handle(telebot.OnText, func(ctx telebot.Context) error {
+		m := ctx.Message()
 		log.Info().Msg(m.Text + " " + GetUsername(m.Chat))
 		p := h.getPlayer(m)
 		ps := FilterPlayers(h.game.AllPlayers(h.ctx(m)), p.ID)
 		h.sendChat(ps, "📣 "+GetUsername(m.Chat)+": "+m.Text)
+		return nil
 	})
 
 	h.bot.Start()
 	return
 }
 
-func (h *Handler) CmdStart(m *telebot.Message) {
-	h.joinServer(m)
+func (h *Handler) CmdStart(ctx telebot.Context) error {
+	h.joinServer(ctx.Message())
+	return nil
 }
 
-func (h *Handler) CmdJoin(m *telebot.Message) {
-	h.joinServer(m)
+func (h *Handler) CmdJoin(ctx telebot.Context) error {
+	h.joinServer(ctx.Message())
+	return nil
 }
 
-func (h *Handler) CmdLeave(m *telebot.Message) {
+func (h *Handler) CmdLeave(ctx telebot.Context) error {
+	m := ctx.Message()
 	id := cast.ToString(m.Chat.ID)
 	if err := h.game.PlayerLeave(h.ctx(m), id); err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 	}
+	return nil
 }
 
-func (h *Handler) CmdRoom(m *telebot.Message) {
+func (h *Handler) CmdRoom(ctx telebot.Context) error {
+	m := ctx.Message()
 	ps, err := h.store.ListPlayers(h.ctx(m))
 	if err != nil {
 		h.sendMessage(m.Chat, "Lỗi: "+err.Error())
-		return
+		return nil
 	}
 
 	bf := bytes.NewBuffer(nil)
@@ -134,14 +143,19 @@ func (h *Handler) CmdRoom(m *telebot.Message) {
 		bf.WriteString("\n")
 	}
 	h.sendMessage(m.Chat, bf.String())
+	return nil
 }
 
-func (h *Handler) CmdListRules(m *telebot.Message) {
+func (h *Handler) CmdListRules(ctx telebot.Context) error {
+	m := ctx.Message()
 	h.sendMessage(m.Chat, game.RuleListText)
+	return nil
 }
 
-func (h *Handler) CmdSetRule(m *telebot.Message) {
+func (h *Handler) CmdSetRule(ctx telebot.Context) error {
+	m := ctx.Message()
 	h.sendMessage(m.Chat, "Chức năng tạm thời bị vô hiệu hóa")
+	return nil
 	// p := h.getPlayer(m)
 	// ruleID := strings.TrimSpace(m.Payload)
 	// r, ok := game.DefaultRules[ruleID]
@@ -153,11 +167,14 @@ func (h *Handler) CmdSetRule(m *telebot.Message) {
 	// h.sendMessage(m.Chat, "Đã thay đổi rule của bạn thành: "+r.Name+". Tạo game mới để cảm nhận!")
 }
 
-func (h *Handler) CmdHistory(m *telebot.Message) {
+func (h *Handler) CmdHistory(ctx telebot.Context) error {
+	m := ctx.Message()
 	h.sendMessage(m.Chat, "Chức năng tạm thời bị vô hiệu hóa")
+	return nil
 }
 
-func (h *Handler) CmdStatus(m *telebot.Message) {
+func (h *Handler) CmdStatus(ctx telebot.Context) error {
+	m := ctx.Message()
 	p := h.getPlayer(m)
 	if p == nil {
 		p = h.joinServer(m)
@@ -172,14 +189,18 @@ func (h *Handler) CmdStatus(m *telebot.Message) {
 		"- Status: %s\n",
 		p.ID, p.Name, stringer.FormatCurrency(p.Balance), r.ID, r.Name, p.UserStatus)
 	h.sendMessage(m.Chat, msg)
+
+	return nil
 }
 
-func (h *Handler) CmdEndGame(m *telebot.Message) {
-	h.doEndGame(m, false)
+func (h *Handler) CmdEndGame(ctx telebot.Context) error {
+	h.doEndGame(ctx.Message(), false)
+	return nil
 }
 
-func (h *Handler) CmdNewGame(m *telebot.Message) {
-	h.doNewGame(m, false)
+func (h *Handler) CmdNewGame(ctx telebot.Context) error {
+	h.doNewGame(ctx.Message(), false)
+	return nil
 }
 
 func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
@@ -203,12 +224,14 @@ func (h *Handler) doNewGame(m *telebot.Message, onQuery bool) {
 	}
 }
 
-func (h *Handler) CmdPass(m *telebot.Message) {
+func (h *Handler) CmdPass(ctx telebot.Context) error {
 	// p := h.getPlayer(m)
+	m := ctx.Message()
 	pg, err := h.game.PlayerPass(h.ctx(m))
 	if err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
-		return
+		return err
 	}
 	log.Info().Str("user_id", pg.ID).Msg(pg.Name + " đã bị qua lượt")
+	return nil
 }

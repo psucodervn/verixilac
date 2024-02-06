@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
-	"gopkg.in/tucnak/telebot.v2"
+	"gopkg.in/telebot.v3"
 
 	"github.com/psucodervn/verixilac/internal/game"
 	"github.com/psucodervn/verixilac/internal/model"
@@ -34,7 +34,9 @@ func NewHandler(manager *game.Manager, bot *telebot.Bot, store game.Storage) *Ha
 	}
 }
 
-func (h *Handler) onCallback(q *telebot.Callback) {
+func (h *Handler) onCallback(ctx telebot.Context) error {
+	q := ctx.Callback()
+
 	// log.Info().Interface("data", q.Data).Interface("text", q.Message.Text).Msg("on callback")
 	ar := strings.SplitN(q.Data, " ", 2)
 	if len(ar) > 1 {
@@ -64,6 +66,8 @@ func (h *Handler) onCallback(q *telebot.Callback) {
 	default:
 		log.Warn().Str("cmd", ar[0]).Msg("unknown query command")
 	}
+
+	return nil
 }
 
 func (h *Handler) doJoin(m *telebot.Message, onQuery bool) {

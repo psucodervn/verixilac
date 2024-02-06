@@ -12,7 +12,7 @@ require (
 	github.com/timshannon/badgerhold/v4 v4.0.3
 	go.uber.org/atomic v1.11.0
 	golang.org/x/text v0.14.0
-	gopkg.in/tucnak/telebot.v2 v2.5.0
+	gopkg.in/telebot.v3 v3.2.1
 )
 
 require (

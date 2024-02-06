@@ -6,21 +6,22 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"gopkg.in/tucnak/telebot.v2"
+	"gopkg.in/telebot.v3"
 
 	"github.com/psucodervn/verixilac/internal/model"
 	"github.com/psucodervn/verixilac/internal/stringer"
 )
 
-func (h *Handler) CmdAdmin(m *telebot.Message) {
+func (h *Handler) CmdAdmin(ctx telebot.Context) error {
+	m := ctx.Message()
 	p := h.getPlayer(m)
 	if !p.IsAdmin() {
 		h.sendMessage(m.Chat, "Bạn không có quyền admin")
-		return
+		return nil
 	}
 	ss := strings.Split(strings.TrimSpace(m.Payload), " ")
 	if len(ss) == 0 {
-		return
+		return nil
 	}
 
 	cmd := ss[0]
@@ -32,6 +33,7 @@ func (h *Handler) CmdAdmin(m *telebot.Message) {
 	case "deposit":
 		h.doDeposit(m, p, ss[1:])
 	}
+	return nil
 }
 
 func (h *Handler) doAdminPause(m *telebot.Message) {

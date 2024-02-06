@@ -1,7 +1,7 @@
 package telegram
 
 import (
-	"gopkg.in/tucnak/telebot.v2"
+	"gopkg.in/telebot.v3"
 
 	"github.com/psucodervn/verixilac/internal/game"
 )

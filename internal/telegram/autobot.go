@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog/log"
-	"gopkg.in/tucnak/telebot.v2"
+	"gopkg.in/telebot.v3"
 
 	"github.com/psucodervn/verixilac/internal/game"
 	"github.com/psucodervn/verixilac/internal/model"
