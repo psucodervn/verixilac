@@ -44,6 +44,18 @@ type (
 	}
 )
 
+var (
+	isAdmins = map[string]bool{}
+)
+
+func init() {
+	for _, id := range strings.Split(os.Getenv("ADMIN_TELEGRAM_IDS"), ",") {
+		if len(id) > 0 {
+			isAdmins[id] = true
+		}
+	}
+}
+
 func (p Player) GetID() string {
 	return p.ID
 }
@@ -53,7 +65,7 @@ func (p Player) GetName() string {
 }
 
 func (p Player) IsAdmin() bool {
-	return p.UserRole == UserRoleAdmin || len(p.TelegramID) > 0 && p.TelegramID == os.Getenv("ADMIN_TELEGRAM_ID")
+	return p.UserRole == UserRoleAdmin || (len(p.TelegramID) > 0 && isAdmins[p.TelegramID])
 }
 
 func (p Player) IsBot() bool {
