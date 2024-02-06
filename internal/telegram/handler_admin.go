@@ -15,6 +15,10 @@ import (
 func (h *Handler) CmdAdmin(ctx telebot.Context) error {
 	m := ctx.Message()
 	p := h.getPlayer(m)
+	if p == nil {
+		return fmt.Errorf("player not found")
+	}
+
 	if !p.IsAdmin() {
 		h.sendMessage(m.Chat, "Bạn không có quyền admin")
 		return nil

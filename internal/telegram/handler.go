@@ -83,6 +83,11 @@ func (h *Handler) doBet(m *telebot.Message, onQuery bool) {
 	}
 
 	p := h.getPlayer(m)
+	if p == nil {
+		h.sendMessage(m.Chat, "Bạn chưa vào sòng")
+		return
+	}
+
 	ctx := h.ctx(m)
 	gameID := strings.TrimSpace(ar[0])
 
@@ -143,6 +148,11 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 
 func (h *Handler) doCancel(m *telebot.Message, onQuery bool) {
 	p := h.getPlayer(m)
+	if p == nil {
+		h.sendMessage(m.Chat, "Bạn chưa vào sòng")
+		return
+	}
+
 	gameID := strings.TrimSpace(m.Payload)
 	ctx := h.ctx(m)
 	g, pg := h.findPlayerInGame(m, gameID, p.ID)
@@ -193,6 +203,11 @@ func (h *Handler) onPlayerBet(g *game.Game, p *game.PlayerInGame) {
 
 func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
 	p := h.getPlayer(m)
+	if p == nil {
+		h.sendMessage(m.Chat, "Bạn chưa vào sòng")
+		return false
+	}
+
 	gameID := strings.TrimSpace(m.Payload)
 	if len(gameID) == 0 {
 		g := h.game.CurrentGame()
@@ -227,6 +242,11 @@ func (h *Handler) doEndGame(m *telebot.Message, onQuery bool) bool {
 
 func (h *Handler) doStand(m *telebot.Message, onQuery bool, isBot bool) bool {
 	p := h.getPlayer(m, isBot)
+	if p == nil {
+		h.sendMessage(m.Chat, "Bạn chưa vào sòng")
+		return false
+	}
+
 	gameID := strings.TrimSpace(m.Payload)
 	g, pg := h.findPlayerInGame(m, gameID, p.ID)
 	if g == nil || pg == nil {
@@ -247,6 +267,11 @@ func (h *Handler) doStand(m *telebot.Message, onQuery bool, isBot bool) bool {
 
 func (h *Handler) doHit(m *telebot.Message, isBot bool) bool {
 	p := h.getPlayer(m, isBot)
+	if p == nil {
+		h.sendMessage(m.Chat, "Bạn chưa vào sòng")
+		return false
+	}
+
 	force := false
 	ar := strings.Split(strings.TrimSpace(m.Payload), " ")
 	if len(ar) >= 2 {
@@ -316,6 +341,11 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 	}
 
 	p := h.getPlayer(m)
+	if p == nil {
+		h.sendMessage(m.Chat, "Bạn chưa vào sòng")
+		return
+	}
+
 	g, dealer := h.findPlayerInGame(m, ar[0], p.ID)
 	if g == nil || dealer == nil {
 		return

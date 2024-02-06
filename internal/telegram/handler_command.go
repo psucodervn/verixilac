@@ -97,6 +97,10 @@ func (h *Handler) Start() (err error) {
 		m := ctx.Message()
 		log.Info().Msg(m.Text + " " + GetUsername(m.Chat))
 		p := h.getPlayer(m)
+		if p == nil {
+			p = h.joinServer(m)
+		}
+
 		ps := FilterPlayers(h.game.AllPlayers(h.ctx(m)), p.ID)
 		h.sendChat(ps, "📣 "+GetUsername(m.Chat)+": "+m.Text)
 		return nil
