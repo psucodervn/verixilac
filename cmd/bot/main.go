@@ -54,9 +54,9 @@ func run(cmd *cobra.Command, args []string) {
 	go func() {
 		<-ch
 		log.Info().Msg("shutting down bot")
-		if _, err := bot.Close(); err != nil {
-			log.Err(err).Msg("failed to stop bot")
-		}
+		// if _, err := bot.Close(); err != nil {
+		// 	log.Err(err).Msg("failed to stop bot")
+		// }
 		if err := store.Close(); err != nil {
 			log.Err(err).Msg("failed to close storage")
 		}
