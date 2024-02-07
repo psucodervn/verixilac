@@ -102,7 +102,7 @@ func (h *Handler) Start() (err error) {
 		}
 
 		ps := FilterPlayers(h.game.AllPlayers(h.ctx(m)), p.ID)
-		h.sendChat(ps, "📣 "+p.Name+": "+m.Text)
+		h.sendChat(ps, "📣 `"+p.Name+":` "+m.Text)
 		return nil
 	})
 

@@ -83,10 +83,11 @@ func (g *Game) Dealer() *PlayerInGame {
 }
 
 func (g *Game) Deal() error {
+	g.mu.Lock()
 	if Status(g.status.Load()) != Betting {
+		g.mu.Unlock()
 		return ErrGameAlreadyStarted
 	}
-	g.mu.Lock()
 
 	if len(g.players) == 0 {
 		g.mu.Unlock()
@@ -122,6 +123,7 @@ func (g *Game) Deal() error {
 	g.table = g.table[len(g.players)*2+2:]
 	g.doneCnt.Store(uint32(len(g.players)))
 	g.status.Store(uint32(Playing))
+
 	g.mu.Unlock()
 	return nil
 }
@@ -138,18 +140,16 @@ func (g *Game) PlayerBet(p *model.Player, betAmount uint64) (*PlayerInGame, erro
 		return nil, fmt.Errorf("bạn chỉ được bet tối đa %dk", g.maxBet.Load())
 	}
 
-	pg := g.FindPlayer(p.ID)
+	g.mu.Lock()
+	pg := g.findPlayer(p.ID)
 	if pg == nil {
-		pg = NewPlayerInGame(p, 0, false)
-		g.mu.Lock()
+		pg = NewPlayerInGame(p, int64(betAmount), false)
 		g.players = append(g.players, pg)
-		g.mu.Unlock()
+	} else {
+		pg.SetBet(betAmount)
 	}
+	g.mu.Unlock()
 
-	if pg.BetAmount()+betAmount > g.maxBet.Load() {
-		return nil, fmt.Errorf("bạn chỉ được bet tối đa %dk", g.maxBet.Load())
-	}
-	pg.AddBet(betAmount)
 	return pg, nil
 }
 

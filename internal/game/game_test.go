@@ -1,9 +1,13 @@
 package game
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"go.uber.org/atomic"
+
+	"github.com/psucodervn/verixilac/internal/model"
 )
 
 func TestCompare(t *testing.T) {
@@ -94,12 +98,23 @@ func TestGetReward(t *testing.T) {
 
 func TestGame_Deal(t *testing.T) {
 	g := &Game{
-		dealer: NewPlayerInGame(NewPlayer("1", "1", 0), 0, true),
+		dealer: NewPlayerInGame(&model.Player{}, 0, true),
 		players: []*PlayerInGame{
-			NewPlayerInGame(NewPlayer("2", "2", 0), 10, false),
+			NewPlayerInGame(&model.Player{Name: "Bot #1"}, 10, false),
+			NewPlayerInGame(&model.Player{Name: "Bot #2"}, 20, false),
 		},
 	}
-	if err := g.Deal(); err != nil {
-		t.Errorf("Deal() error = %v", err)
+	wg := &sync.WaitGroup{}
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			if err := g.Deal(); err != nil {
+				t.Logf("Deal() error = %v", err)
+			}
+			wg.Done()
+		}()
 	}
+	wg.Wait()
+
+	fmt.Println(g.CurrentBoard())
 }

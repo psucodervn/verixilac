@@ -449,7 +449,9 @@ func (h *Handler) sendChat(receivers []model.Player, msg string) {
 
 		go func() {
 			defer wg.Done()
-			_, err := h.bot.Send(ToTelebotChat(p.TelegramID), msg)
+			_, err := h.bot.Send(ToTelebotChat(p.TelegramID), msg, &telebot.SendOptions{
+				ParseMode: telebot.ModeMarkdown,
+			})
 			if err != nil {
 				log.Err(err).Str("receiver", p.Name).Str("msg", msg).Msg("send message failed")
 			}
