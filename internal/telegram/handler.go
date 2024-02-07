@@ -60,7 +60,7 @@ func (h *Handler) onCallback(ctx telebot.Context) error {
 	case "/endgame":
 		h.doEndGame(q.Message, true)
 	case "/compare":
-		h.doCompare(q.Message, true)
+		h.doCompare(q.Message, false)
 	case "/newgame":
 		h.doNewGame(q.Message, true)
 	default:
@@ -328,7 +328,7 @@ func (h *Handler) onPlayerStand(g *game.Game, pg *game.PlayerInGame) {
 }
 
 func (h *Handler) onPlayerHit(g *game.Game, pg *game.PlayerInGame) {
-	players := FilterInGamePlayers(g.AllPlayers(), pg.ID)
+	players := FilterInGamePlayers(g.PlayersInGame(), pg.ID)
 	h.broadcast(players, "`"+pg.Name+"` vừa rút thêm 1 lá", false)
 	h.broadcast(pg, "Bài của bạn: "+pg.Cards().String(false, pg.IsDealer()), true, MakePlayerButton(g, pg, false)...)
 }
@@ -361,6 +361,10 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 	to := g.FindPlayer(ar[1])
 	if to == nil {
 		h.sendMessage(m.Chat, "Sai thông tin")
+		return
+	}
+	if to.IsDone() {
+		h.sendMessage(m.Chat, "Đã lật bài "+to.Name+" rồi!")
 		return
 	}
 
@@ -415,13 +419,14 @@ func (h *Handler) onGameFinish(g *game.Game) {
 
 func (h *Handler) onPlayerPlay(g *game.Game, pg *game.PlayerInGame) {
 	if pg.IsDealer() {
-		for _, p := range g.PlayersInGame() {
-			if p.IsDone() {
-				continue
-			}
-			msg := fmt.Sprintf("%s đang cầm %d lá", p.Name, len(p.Cards()))
-			h.broadcast(g.Dealer(), msg, false, MakeDealerPlayingButtons(g, p)...)
-		}
+		// for _, p := range g.PlayersInGame() {
+		// 	if p.IsDone() {
+		// 		continue
+		// 	}
+		// 	msg := fmt.Sprintf("%s đang cầm %d lá", p.Name, len(p.Cards()))
+		// 	h.broadcast(g.Dealer(), msg, false, MakeDealerPlayingButtons(g, p)...)
+		// }
+		h.broadcast(g.Dealer(), "Lật bài con", false, MakeDealerRevealButtons(g)...)
 	}
 	h.broadcast(pg, "Tới lượt bạn: "+pg.Cards().String(false, pg.IsDealer()), false, MakePlayerButton(g, pg, false)...)
 	h.broadcast(FilterInGamePlayers(g.AllPlayers(), pg.ID), "Tới lượt `"+pg.Name+"`", false)

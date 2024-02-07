@@ -1,6 +1,8 @@
 package telegram
 
 import (
+	"fmt"
+
 	"gopkg.in/telebot.v3"
 
 	"github.com/psucodervn/verixilac/internal/game"
@@ -51,9 +53,23 @@ func MakeDealerPrepareButtons(g *game.Game) []InlineButton {
 }
 
 func MakeDealerPlayingButtons(g *game.Game, pg *game.PlayerInGame) []InlineButton {
+	s := fmt.Sprintf("Lật bài của %s (%d lá)", pg.Name, len(pg.Cards()))
 	return []InlineButton{
-		{Text: "Lật bài của " + pg.Name, Data: "/compare " + g.ID() + " " + pg.ID},
+		{Text: s, Data: "/compare " + g.ID() + " " + pg.ID},
 	}
+}
+
+func MakeDealerRevealButtons(g *game.Game) []InlineButton {
+	bs := make([]InlineButton, 0, len(g.PlayersInGame()))
+	for r, pg := range g.PlayersInGame() {
+		if pg.IsDone() {
+			continue
+		}
+
+		s := fmt.Sprintf("Lật bài %s (%d lá)", pg.Name, len(pg.Cards()))
+		bs = append(bs, InlineButton{Text: s, Data: "/compare " + g.ID() + " " + pg.ID, Row: r})
+	}
+	return bs
 }
 
 // func MakeDealerPlayingButtons(g *game.Game) []InlineButton {
