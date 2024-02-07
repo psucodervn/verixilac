@@ -384,11 +384,7 @@ func (m *Manager) FinishGame(ctx context.Context, g *Game, force bool) error {
 	return nil
 }
 
-func (m *Manager) CancelGame(ctx context.Context, g *Game) error {
-	if g.Status() != Betting {
-		return ErrGameAlreadyStarted
-	}
-
+func (m *Manager) CancelGame(ctx context.Context) error {
 	m.mu.Lock()
 	m.currentGame = nil
 	m.mu.Unlock()

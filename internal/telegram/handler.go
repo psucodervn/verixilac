@@ -112,7 +112,7 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 		return
 	}
 
-	h.broadcast(g.Players(), "Chốt deal:\n\n"+g.PreparingBoard(), true)
+	h.broadcast(h.game.ActivePlayers(ctx), "Chốt deal:\n\n"+g.PreparingBoard(), true)
 
 	// send cards
 	for _, pg := range g.PlayersInGame() {
@@ -159,11 +159,16 @@ func (h *Handler) doCancel(m *telebot.Message, onQuery bool) {
 	if g == nil || pg == nil {
 		return
 	}
+	if g.Status() != game.Betting {
+		h.sendMessage(m.Chat, "Ván chơi đã bắt đầu, không thể huỷ")
+		return
+	}
 	if !pg.IsDealer() {
 		h.sendMessage(m.Chat, "Bạn không phải nhà cái")
 		return
 	}
-	if err := h.game.CancelGame(ctx, g); err != nil {
+
+	if err := h.game.CancelGame(ctx); err != nil {
 		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
 		return
 	}
@@ -452,4 +457,20 @@ func (h *Handler) sendChat(receivers []model.Player, msg string) {
 	}
 
 	wg.Wait()
+}
+
+func (h *Handler) doRename(m *telebot.Message, id string, newName string) {
+	p, err := h.store.GetPlayerByID(h.ctx(m), id)
+	if err != nil {
+		h.sendMessage(m.Chat, "Không tìm thấy người chơi")
+		return
+	}
+
+	oldName := p.Name
+	p.Name = newName
+	if err := h.store.SavePlayer(h.ctx(m), p); err != nil {
+		h.sendMessage(m.Chat, "Lỗi: "+err.Error())
+		return
+	}
+	h.broadcast(h.game.AllPlayers(h.ctx(m)), "♻️ `"+oldName+"` đã đổi tên thành `"+newName+"`", false)
 }

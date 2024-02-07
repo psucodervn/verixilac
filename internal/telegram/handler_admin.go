@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -30,12 +31,22 @@ func (h *Handler) CmdAdmin(ctx telebot.Context) error {
 
 	cmd := ss[0]
 	switch cmd {
+	case "rename":
+		if len(ss) < 3 {
+			h.sendMessage(m.Chat, "Cú pháp: /admin rename player_id new_name")
+			return nil
+		}
+		h.doRename(m, ss[1], strings.Join(ss[2:], " "))
+	case "cancel":
+		h.doAdminCancel(m)
 	case "pause":
 		h.doAdminPause(m)
 	case "resume":
 		h.doAdminResume(m)
 	case "deposit":
 		h.doDeposit(m, p, ss[1:])
+	case "restart":
+		os.Exit(1)
 	}
 	return nil
 }
@@ -86,4 +97,13 @@ func (h *Handler) doDeposit(m *telebot.Message, operator *model.Player, ss []str
 		msg = fmt.Sprintf("💸 `%s` đã rút ra %dk.", p.Name, -amount)
 	}
 	h.broadcast(h.game.AllPlayers(nil), msg, false)
+}
+
+func (h *Handler) doAdminCancel(m *telebot.Message) {
+	ctx := h.ctx(m)
+	if err := h.game.CancelGame(ctx); err != nil {
+		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+		return
+	}
+	h.broadcast(h.game.AllPlayers(ctx), "🚫 Ván chơi hiện tại đã bị huỷ, bạn có thể tạo ván mới!", false)
 }

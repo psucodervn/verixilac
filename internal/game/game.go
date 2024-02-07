@@ -158,8 +158,7 @@ func (g *Game) PreparingBoard() string {
 	defer g.mu.RUnlock()
 
 	bf := bytes.NewBuffer(nil)
-	r := g.Rule()
-	bf.WriteString(fmt.Sprintf("Nhà cái: `%s` (rule: %s)\n", g.dealer.Name, r.Name))
+	bf.WriteString(fmt.Sprintf("Nhà cái: `%s`\n", g.dealer.Name))
 	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
