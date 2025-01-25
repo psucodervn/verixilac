@@ -134,10 +134,10 @@ func (g *Game) PlayerBet(p *model.Player, betAmount uint64) (*PlayerInGame, erro
 	}
 
 	if p.Balance < int64(betAmount) {
-		return nil, fmt.Errorf("bạn không đủ tiền để bet %dk", betAmount)
+		return nil, fmt.Errorf("bạn không đủ số dư để bet %s", stringer.FormatCurrency(betAmount))
 	}
 	if betAmount > g.maxBet.Load() {
-		return nil, fmt.Errorf("bạn chỉ được bet tối đa %dk", g.maxBet.Load())
+		return nil, fmt.Errorf("bạn chỉ được bet tối đa %s", stringer.FormatCurrency(g.maxBet.Load()))
 	}
 
 	g.mu.Lock()
@@ -159,12 +159,12 @@ func (g *Game) PreparingBoard() string {
 
 	bf := bytes.NewBuffer(nil)
 	bf.WriteString(fmt.Sprintf("Nhà cái: `%s`\n", g.dealer.Name))
-	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
+	bf.WriteString(fmt.Sprintf("Người chơi (%d - %s):", len(g.players), stringer.FormatCurrency(g.totalBetAmount())))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
 	} else {
 		for _, p := range g.players {
-			bf.WriteString(fmt.Sprintf("\n  - `%s`: %dk", p.Name, p.BetAmount()))
+			bf.WriteString(fmt.Sprintf("\n  - `%s`: %s", p.Name, stringer.FormatCurrency(p.BetAmount())))
 		}
 	}
 	return bf.String()
@@ -176,7 +176,7 @@ func (g *Game) CurrentBoard() string {
 
 	bf := bytes.NewBuffer(nil)
 	bf.WriteString(fmt.Sprintf("Nhà cái : %s\n", g.dealer.CardsString()))
-	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
+	bf.WriteString(fmt.Sprintf("Người chơi (%d - %s):", len(g.players), stringer.FormatCurrency(g.totalBetAmount())))
 	if len(g.players) == 0 {
 		bf.WriteString("\n(chưa có ai)")
 	} else {
@@ -203,19 +203,19 @@ func (g *Game) ResultBoard() string {
 
 	bf := bytes.NewBuffer(nil)
 	bf.WriteString(fmt.Sprintf("Nhà cái: %s\n", g.dealer.Cards().String(false, true)))
-	bf.WriteString(fmt.Sprintf("Người chơi (%d - %dk):", len(g.players), g.totalBetAmount()))
+	bf.WriteString(fmt.Sprintf("Người chơi (%d - %s):", len(g.players), stringer.FormatCurrency(g.totalBetAmount())))
 	for _, p := range g.players {
 		bf.WriteString(fmt.Sprintf("\n  - `%s`: %s", p.Name, p.Cards().String(false, false)))
 	}
 
-	bf.WriteString(fmt.Sprintf("\n\nTiền thưởng:\n\nNhà cái (`%s`): %+dk (%sk)\n",
+	bf.WriteString(fmt.Sprintf("\n\nThưởng:\n\nNhà cái (`%s`): %s (%s)\n",
 		g.dealer.Name,
-		g.dealer.Reward(),
+		stringer.FormatCurrency(g.dealer.Reward()),
 		stringer.FormatCurrency(g.dealer.Balance+g.dealer.Reward())))
 
 	bf.WriteString(fmt.Sprintf("Người chơi: "))
 	for _, p := range g.players {
-		bf.WriteString(fmt.Sprintf("\n  - `%s`: %+dk (%sk)", p.Name, p.Reward(), stringer.FormatCurrency(p.Balance+p.Reward())))
+		bf.WriteString(fmt.Sprintf("\n  - `%s`: %s (%s)", p.Name, stringer.FormatCurrency(p.Reward()), stringer.FormatCurrency(p.Balance+p.Reward())))
 	}
 	return bf.String()
 }

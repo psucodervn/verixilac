@@ -93,7 +93,7 @@ func (h *Handler) doBet(m *telebot.Message, onQuery bool) {
 
 	amount := cast.ToUint64(ar[1])
 	if amount < 0 {
-		h.sendMessage(m.Chat, "Số tiền cược không hợp lệ")
+		h.sendMessage(m.Chat, "Số cược không hợp lệ")
 		return
 	}
 	if err := h.game.PlayerBet(ctx, gameID, p, amount); err != nil {
@@ -133,9 +133,9 @@ func (h *Handler) doDeal(m *telebot.Message, onQuery bool) {
 			if !pg.IsDone() {
 				continue
 			}
-			msg := fmt.Sprintf("Bài của %s: %s\n%s đã thắng %dk",
+			msg := fmt.Sprintf("Bài của %s: %s\n%s đã thắng %s",
 				pg.Name, pg.Cards().String(false, false),
-				pg.Name, pg.Reward())
+				pg.Name, stringer.FormatCurrency(pg.Reward()))
 			h.broadcast(g.AllPlayers(), msg, false)
 		}
 	}
@@ -388,14 +388,14 @@ func (h *Handler) doCompare(m *telebot.Message, onQuery bool) {
 
 	var msgPlayer string
 	if reward < 0 {
-		msgDealer += fmt.Sprintf("\n%s thắng và được cộng %dk", to.Name, -reward)
-		msgPlayer = fmt.Sprintf("🤑 Cái lật bài bạn và thua. Bạn được cộng %dk", -reward)
+		msgDealer += fmt.Sprintf("\n%s thắng và được cộng %s", to.Name, stringer.FormatCurrency(-reward))
+		msgPlayer = fmt.Sprintf("🤑 Cái lật bài bạn và thua. Bạn được cộng %s", stringer.FormatCurrency(-reward))
 	} else if reward > 0 {
-		msgDealer += fmt.Sprintf("\n%s thua và bị trừ %dk", to.Name, reward)
-		msgPlayer = fmt.Sprintf("🔻 Cái lật bài bạn và thắng. Bạn bị trừ %dk", reward)
+		msgDealer += fmt.Sprintf("\n%s thua và bị trừ %s", to.Name, stringer.FormatCurrency(reward))
+		msgPlayer = fmt.Sprintf("🔻 Cái lật bài bạn và thắng. Bạn bị trừ %s", stringer.FormatCurrency(reward))
 	} else {
 		msgDealer += fmt.Sprintf("\n%s và cái hoà nhau", to.Name)
-		msgPlayer = fmt.Sprintf("🤝 Cái lật bài bạn và hoà. Bạn không bị mất tiền")
+		msgPlayer = fmt.Sprintf("🤝 Cái lật bài bạn và hoà. Bạn không bị mất gì")
 	}
 	msgPlayer += fmt.Sprintf("\nBài của cái: %s",
 		dealer.Cards().String(false, true),

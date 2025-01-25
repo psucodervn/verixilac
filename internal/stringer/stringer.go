@@ -32,6 +32,11 @@ func GroupDigit(s string) string {
 	return string(r)
 }
 
-func FormatCurrency(balance int64) string {
-	return printer.Sprintf("%d", balance)
+type Number interface {
+	int64 | uint64
+}
+
+func FormatCurrency[T Number](balance T) string {
+	b := balance / 1000
+	return printer.Sprintf("%d☘️", b)
 }

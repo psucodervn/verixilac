@@ -14,6 +14,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/psucodervn/verixilac/internal/model"
+	"github.com/psucodervn/verixilac/internal/stringer"
 )
 
 var initialBalance int
@@ -205,7 +206,7 @@ func (m *Manager) NewGame(dealer *model.Player) (*Game, error) {
 		return nil, ErrServerMaintenance
 	}
 	if dealer.Balance < int64(m.minDeal.Load()) {
-		return nil, fmt.Errorf("kiếm thêm tiền đi bạn ơi, tối thiểu %dk", m.minDeal.Load())
+		return nil, fmt.Errorf("tích thêm đi bạn ơi, tối thiểu %s", stringer.FormatCurrency(m.minDeal.Load()))
 	}
 
 	m.mu.Lock()
