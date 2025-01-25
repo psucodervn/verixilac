@@ -140,7 +140,7 @@ func (h *Handler) CmdRoom(ctx telebot.Context) error {
 	bf := bytes.NewBuffer(nil)
 	bf.WriteString("Danh sách người chơi:\n")
 	for _, p := range ps {
-		bf.WriteString(fmt.Sprintf("- %s (`%s`): %sk", p.Name, p.ID, stringer.FormatCurrency(p.Balance)))
+		bf.WriteString(fmt.Sprintf("- %s (`%s`): %s", p.Name, p.ID, stringer.FormatCurrency(p.Balance)))
 		if !p.IsActive() {
 			bf.WriteString(" (offline)")
 		}
