@@ -184,14 +184,12 @@ func (h *Handler) CmdStatus(ctx telebot.Context) error {
 		p = h.joinServer(m)
 	}
 
-	r := game.DefaultRule
 	msg := fmt.Sprintf("Thông tin của bạn:\n"+
 		"- ID: `%s`\n"+
 		"- Name: %s\n"+
-		"- Balance: `%s` k\n"+
-		"- Rule: %s (%s)\n"+
+		"- Balance: `%s`\n"+
 		"- Status: %s\n",
-		p.ID, p.Name, stringer.FormatCurrency(p.Balance), r.ID, r.Name, p.UserStatus)
+		p.ID, p.Name, stringer.FormatCurrency(p.Balance), p.UserStatus)
 	h.sendMessage(m.Chat, msg)
 
 	return nil
