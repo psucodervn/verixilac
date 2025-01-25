@@ -37,6 +37,6 @@ type Number interface {
 }
 
 func FormatCurrency[T Number](balance T) string {
-	b := balance / 1000
+	b := balance
 	return printer.Sprintf("%d☘️", b)
 }
