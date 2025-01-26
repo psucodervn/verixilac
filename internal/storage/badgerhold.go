@@ -12,6 +12,15 @@ type BadgerHoldStorage struct {
 	store *badgerhold.Store
 }
 
+func (b *BadgerHoldStorage) ResetBalance(ctx context.Context, newBalance int64) error {
+	err := b.store.UpdateMatching(&model.Player{}, nil, func(record interface{}) error {
+		p := record.(*model.Player)
+		p.Balance = newBalance
+		return nil
+	})
+	return err
+}
+
 func (b *BadgerHoldStorage) UpdatePlayerStatus(ctx context.Context, id string, status model.UserStatus) (*model.Player, error) {
 	p := (*model.Player)(nil)
 	err := b.store.UpdateMatching(&model.Player{}, badgerhold.Where("ID").Eq(id), func(record interface{}) error {

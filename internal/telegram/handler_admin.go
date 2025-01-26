@@ -45,10 +45,30 @@ func (h *Handler) CmdAdmin(ctx telebot.Context) error {
 		h.doAdminResume(m)
 	case "deposit":
 		h.doDeposit(m, p, ss[1:])
+	case "reset":
+		h.doResetBalance(m, p, ss[1:])
 	case "restart":
 		os.Exit(1)
 	}
 	return nil
+}
+
+func (h *Handler) doResetBalance(m *telebot.Message, operator *model.Player, ss []string) {
+	if len(ss) != 1 {
+		h.sendMessage(m.Chat, "Cú pháp: /reset new_balance")
+		return
+	}
+
+	balance, err := strconv.ParseInt(ss[0], 10, 64)
+	if err != nil {
+		h.sendMessage(m.Chat, "Cú pháp: /reset new_balance")
+		return
+	}
+
+	if err := h.store.ResetBalance(h.ctx(m), balance); err != nil {
+		h.sendMessage(m.Chat, stringer.Capitalize(err.Error()))
+		return
+	}
 }
 
 func (h *Handler) doAdminPause(m *telebot.Message) {
