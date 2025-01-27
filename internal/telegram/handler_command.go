@@ -19,6 +19,14 @@ var (
 			Description: "Thông tin người chơi",
 		},
 		{
+			Text:        "room",
+			Description: "Xem thông tin phòng",
+		},
+		{
+			Text:        "stats",
+			Description: "Xem thống kê",
+		},
+		{
 			Text:        "newgame",
 			Description: "Tạo ván mới",
 		},
@@ -37,14 +45,6 @@ var (
 		{
 			Text:        "pass",
 			Description: "Cho qua lượt",
-		},
-		{
-			Text:        "room",
-			Description: "Xem thông tin phòng",
-		},
-		{
-			Text:        "rules",
-			Description: "Xem danh sách rule",
 		},
 		{
 			Text:        "history",
@@ -83,6 +83,7 @@ func (h *Handler) Start() (err error) {
 	h.bot.Handle("/status", h.CmdStatus)
 	h.bot.Handle("/rules", h.CmdListRules)
 	h.bot.Handle("/history", h.CmdHistory)
+	h.bot.Handle("/stats", h.CmdStats)
 	h.bot.Handle("/admin", h.CmdAdmin)
 
 	h.bot.Handle(telebot.OnQuery, func(ctx telebot.Context) error {
@@ -174,6 +175,17 @@ func (h *Handler) CmdSetRule(ctx telebot.Context) error {
 func (h *Handler) CmdHistory(ctx telebot.Context) error {
 	m := ctx.Message()
 	h.sendMessage(m.Chat, "Chức năng tạm thời bị vô hiệu hóa")
+	// p := h.getPlayer(m)
+	// res := h.game.PlayerHistory(h.ctx(m), p)
+	// h.sendMessage(m.Chat, res)
+	return nil
+}
+
+func (h *Handler) CmdStats(ctx telebot.Context) error {
+	m := ctx.Message()
+	p := h.getPlayer(m)
+	res := h.game.PlayerStats(h.ctx(m), p)
+	h.sendMessage(m.Chat, res)
 	return nil
 }
 

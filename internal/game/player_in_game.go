@@ -113,7 +113,7 @@ func (p *PlayerInGame) Stand() error {
 	if PlayerInGameStatus(p.status.Load()) != PlayerPlaying {
 		return ErrYouNotPlaying
 	}
-	if p.cards.Type(p.isDealer.Load()) == TypeTooLow {
+	if p.cards.Type(p.isDealer.Load()) == model.TypeTooLow {
 		return ErrTooLow
 	}
 	p.status.Store(uint32(PlayerStood))
@@ -139,15 +139,15 @@ func (p *PlayerInGame) Reward() int64 {
 
 func (p *PlayerInGame) CanHit() bool {
 	t := p.Cards().Type(p.isDealer.Load())
-	return t == TypeTooLow || (t == TypeNormal && p.Cards().Value() < 21)
+	return t == model.TypeTooLow || (t == model.TypeNormal && p.Cards().Value() < 21)
 }
 
 func (p *PlayerInGame) CanStand() bool {
 	t := p.Cards().Type(p.isDealer.Load())
-	return t != TypeTooLow
+	return t != model.TypeTooLow
 }
 
-func (p *PlayerInGame) ResultType() ResultType {
+func (p *PlayerInGame) ResultType() model.ResultType {
 	return p.Cards().Type(p.isDealer.Load())
 }
 

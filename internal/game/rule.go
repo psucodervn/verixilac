@@ -4,13 +4,15 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/psucodervn/verixilac/internal/model"
 )
 
 type Rule struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Multipliers map[PlayerType]map[ResultType]int64
+	Multipliers map[PlayerType]map[model.ResultType]int64
 }
 
 var (
@@ -20,16 +22,16 @@ var (
 			ID:          "1",
 			Name:        "Hai Dinh",
 			Description: `Xì lác, ngũ linh: x2. Xì bàn: x3. Con cái như nhau.`,
-			Multipliers: map[PlayerType]map[ResultType]int64{
+			Multipliers: map[PlayerType]map[model.ResultType]int64{
 				Dealer: {
-					TypeDoubleBlackJack: 3,
-					TypeHighFive:        2,
-					TypeBlackJack:       2,
+					model.TypeDoubleBlackJack: 3,
+					model.TypeHighFive:        2,
+					model.TypeBlackJack:       2,
 				},
 				Participant: {
-					TypeDoubleBlackJack: 3,
-					TypeHighFive:        2,
-					TypeBlackJack:       2,
+					model.TypeDoubleBlackJack: 3,
+					model.TypeHighFive:        2,
+					model.TypeBlackJack:       2,
 				},
 			},
 		},
@@ -37,9 +39,9 @@ var (
 			ID:          "2",
 			Name:        "Normal",
 			Description: `Xì bàn: con x2, cái x1`,
-			Multipliers: map[PlayerType]map[ResultType]int64{
+			Multipliers: map[PlayerType]map[model.ResultType]int64{
 				Participant: {
-					TypeDoubleBlackJack: 2,
+					model.TypeDoubleBlackJack: 2,
 				},
 			},
 		},

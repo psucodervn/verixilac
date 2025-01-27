@@ -5,18 +5,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-)
 
-type ResultType uint8
-
-const (
-	TypeDoubleBlackJack ResultType = iota
-	TypeBlackJack
-	TypeHighFive
-	TypeNormal
-	TypeBusted
-	TypeTooHigh
-	TypeTooLow
+	"github.com/psucodervn/verixilac/internal/model"
 )
 
 var (
@@ -109,13 +99,13 @@ func (cs Cards) String(censor bool, isDealer ...bool) string {
 	return strings.Join(s, ", ") + " (" + cs.TypeString(isDealer...) + ")"
 }
 
-func (cs Cards) Type(isDealer ...bool) ResultType {
+func (cs Cards) Type(isDealer ...bool) model.ResultType {
 	if cs.IsDoubleBlackJack() {
-		return TypeDoubleBlackJack
+		return model.TypeDoubleBlackJack
 	} else if cs.IsBlackJack() {
-		return TypeBlackJack
+		return model.TypeBlackJack
 	} else if cs.IsHighFive() {
-		return TypeHighFive
+		return model.TypeHighFive
 	}
 	val := cs.Value()
 	min := 16
@@ -123,28 +113,28 @@ func (cs Cards) Type(isDealer ...bool) ResultType {
 		min = 15
 	}
 	if val < min {
-		return TypeTooLow
+		return model.TypeTooLow
 	} else if val >= 28 {
-		return TypeTooHigh
+		return model.TypeTooHigh
 	} else if val > 21 {
-		return TypeBusted
+		return model.TypeBusted
 	}
-	return TypeNormal
+	return model.TypeNormal
 }
 
 func (cs Cards) TypeString(isDealer ...bool) string {
 	switch cs.Type(isDealer...) {
-	case TypeHighFive:
+	case model.TypeHighFive:
 		return fmt.Sprintf("ngũ linh: %d điểm ⚡️", cs.Value())
-	case TypeBusted:
+	case model.TypeBusted:
 		return fmt.Sprintf("toang: %d điểm 💥", cs.Value())
-	case TypeBlackJack:
+	case model.TypeBlackJack:
 		return "xì lác ⚡️"
-	case TypeDoubleBlackJack:
+	case model.TypeDoubleBlackJack:
 		return "xì bàn ⚡️"
-	case TypeTooLow:
+	case model.TypeTooLow:
 		return fmt.Sprintf("chưa đủ tẩy: %d điểm", cs.Value())
-	case TypeTooHigh:
+	case model.TypeTooHigh:
 		return fmt.Sprintf("đền: %d điểm", cs.Value())
 	default:
 		return fmt.Sprintf("%d điểm", cs.Value())

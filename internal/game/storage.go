@@ -8,7 +8,7 @@ import (
 
 type Storage interface {
 	SaveRecord(ctx context.Context, r *model.Record) error
-	ListRecords(ctx context.Context, playerID string) ([]model.Record, error)
+	ListRecords(ctx context.Context, playerID string, limit int) ([]model.Record, error)
 	GetPlayerByID(ctx context.Context, id string) (*model.Player, error)
 	SavePlayer(ctx context.Context, p *model.Player) error
 	ListPlayers(ctx context.Context) ([]model.Player, error)

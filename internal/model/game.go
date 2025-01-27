@@ -23,9 +23,13 @@ const (
 
 type (
 	Record struct {
-		ID     uint64 `badgerhold:"key"`
-		GameID string
-		Data   any
+		ID         uint64 `badgerhold:"key"`
+		GameID     string
+		PlayerID   string `badgerhold:"index"`
+		Reward     int64
+		ResultType ResultType
+		Value      int
+		IsDealer   bool
 	}
 
 	Player struct {
@@ -84,5 +88,36 @@ func (st UserStatus) String() string {
 		return "inactive"
 	default:
 		return "unknown"
+	}
+}
+
+type ResultType uint8
+
+const (
+	TypeDoubleBlackJack ResultType = iota
+	TypeBlackJack
+	TypeHighFive
+	TypeNormal
+	TypeBusted
+	TypeTooHigh
+	TypeTooLow
+)
+
+func (r ResultType) String() string {
+	switch r {
+	case TypeDoubleBlackJack:
+		return "Xì bàn"
+	case TypeBlackJack:
+		return "Xì lác"
+	case TypeHighFive:
+		return "Ngũ linh"
+	case TypeBusted:
+		return "Toang"
+	case TypeTooHigh:
+		return "Đền"
+	case TypeTooLow:
+		return "Chưa đủ tẩy"
+	default:
+		return "normal"
 	}
 }

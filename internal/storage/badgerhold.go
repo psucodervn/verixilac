@@ -84,10 +84,9 @@ func (b *BadgerHoldStorage) SaveRecord(ctx context.Context, r *model.Record) err
 	return b.store.Insert(badgerhold.NextSequence(), r)
 }
 
-func (b *BadgerHoldStorage) ListRecords(ctx context.Context, playerID string) ([]model.Record, error) {
+func (b *BadgerHoldStorage) ListRecords(ctx context.Context, playerID string, limit int) ([]model.Record, error) {
 	var records []model.Record
-	q := &badgerhold.Query{}
-	err := b.store.Find(&records, q.SortBy("GameID").Limit(10).Reverse())
+	err := b.store.Find(&records, badgerhold.Where("PlayerID").Eq(playerID).SortBy("GameID").Limit(limit).Reverse())
 	return records, err
 }
 

@@ -220,6 +220,38 @@ func (g *Game) ResultBoard() string {
 	return bf.String()
 }
 
+type ResultMapItem struct {
+	PlayerID   string
+	Reward     int64
+	ResultType model.ResultType
+	Value      int
+	IsDealer   bool
+}
+
+func (g *Game) ResultMap() []ResultMapItem {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+
+	result := make([]ResultMapItem, len(g.players)+1)
+	for i, p := range g.players {
+		result[i] = ResultMapItem{
+			PlayerID:   p.ID,
+			Reward:     p.Reward(),
+			ResultType: p.ResultType(),
+			Value:      p.Cards().Value(),
+			IsDealer:   false,
+		}
+	}
+	result[len(g.players)] = ResultMapItem{
+		PlayerID:   g.dealer.ID,
+		Reward:     g.dealer.Reward(),
+		ResultType: g.dealer.ResultType(),
+		Value:      g.dealer.Cards().Value(),
+		IsDealer:   true,
+	}
+	return result
+}
+
 func (g *Game) FindPlayer(id string) *PlayerInGame {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
@@ -441,11 +473,11 @@ func Compare(a, b *PlayerInGame) Result {
 	} else if rta > rtb {
 		return Lose
 	}
-	if rta == TypeTooHigh || rta == TypeBusted || rta == TypeTooLow {
+	if rta == model.TypeTooHigh || rta == model.TypeBusted || rta == model.TypeTooLow {
 		return Draw
 	}
 	res := compareScore(a.Cards().Value(), b.Cards().Value())
-	if rta == TypeHighFive {
+	if rta == model.TypeHighFive {
 		res = reverseResult(res)
 	}
 	return res

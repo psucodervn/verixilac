@@ -3,6 +3,7 @@ package game
 import (
 	"bytes"
 	"context"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -21,6 +22,7 @@ var initialBalance int
 
 func init() {
 	initialBalance, _ = strconv.Atoi(os.Getenv("INITIAL_BALANCE"))
+	gob.Register(ResultMapItem{})
 }
 
 type Manager struct {
@@ -337,14 +339,14 @@ func (m *Manager) Deal(ctx context.Context, gameID string) (*Game, error) {
 func (m *Manager) Start(ctx context.Context, g *Game) error {
 	// check for early win
 	gt := g.Dealer().ResultType()
-	if gt == TypeDoubleBlackJack || gt == TypeBlackJack {
+	if gt == model.TypeDoubleBlackJack || gt == model.TypeBlackJack {
 		return m.FinishGame(ctx, g, true)
 	}
 
 	cnt := 0
 	for _, p := range g.PlayersInGame() {
 		pt := p.ResultType()
-		if pt == TypeDoubleBlackJack || pt == TypeBlackJack {
+		if pt == model.TypeDoubleBlackJack || pt == model.TypeBlackJack {
 			_, _ = g.Done(p, true)
 			cnt++
 		}
@@ -361,15 +363,22 @@ func (m *Manager) Start(ctx context.Context, g *Game) error {
 }
 
 func (m *Manager) FinishGame(ctx context.Context, g *Game, force bool) error {
-	if err := m.store.SaveRecord(ctx, &model.Record{
-		GameID: g.ID(),
-		Data:   g.ResultBoard(),
-	}); err != nil {
-		return err
-	}
-
 	for _, pg := range g.PlayersInGame() {
 		if _, err := g.Done(pg, force); err != nil {
+			return err
+		}
+	}
+
+	items := g.ResultMap()
+	for _, item := range items {
+		if err := m.store.SaveRecord(ctx, &model.Record{
+			GameID:     g.ID(),
+			PlayerID:   item.PlayerID,
+			Reward:     item.Reward,
+			IsDealer:   item.IsDealer,
+			ResultType: item.ResultType,
+			Value:      item.Value,
+		}); err != nil {
 			return err
 		}
 	}
@@ -438,15 +447,76 @@ func (m *Manager) Deposit(ctx context.Context, id string, amount int64) (*model.
 }
 
 func (m *Manager) PlayerHistory(ctx context.Context, p *model.Player) string {
-	records, err := m.store.ListRecords(ctx, p.ID)
+	records, err := m.store.ListRecords(ctx, p.ID, 10)
 	if err != nil {
 		return err.Error()
 	}
 
 	bf := bytes.NewBuffer(nil)
 	for _, r := range records {
-		bf.WriteString(fmt.Sprintf("%s\n", r.GameID))
+		bf.WriteString(fmt.Sprintf("%s %s\n", r.ResultType, stringer.FormatCurrency(r.Reward)))
 	}
+	return bf.String()
+}
+
+type Stat struct {
+	Count int
+	Sum   int64
+}
+
+func (m *Manager) PlayerStats(ctx context.Context, p *model.Player) string {
+	size := 100
+	records, err := m.store.ListRecords(ctx, p.ID, size)
+	if err != nil {
+		return err.Error()
+	}
+
+	stats := map[model.ResultType]Stat{}
+	values := map[int]Stat{}
+	sum := int64(0)
+	for _, r := range records {
+		sum += r.Reward
+
+		if r.ResultType > model.TypeNormal {
+			continue
+		}
+
+		if r.ResultType == model.TypeNormal {
+			values[r.Value] = Stat{
+				Count: values[r.Value].Count + 1,
+				Sum:   values[r.Value].Sum + r.Reward,
+			}
+			continue
+		}
+
+		stats[r.ResultType] = Stat{
+			Count: stats[r.ResultType].Count + 1,
+			Sum:   stats[r.ResultType].Sum + r.Reward,
+		}
+	}
+
+	bf := bytes.NewBuffer(nil)
+	bf.WriteString(fmt.Sprintf("Thống kê %d ván gần nhất:\n\n", len(records)))
+	sumD := int64(0)
+	cntD := 0
+	for k, v := range stats {
+		if k >= model.TypeNormal {
+			continue
+		}
+		cntD += v.Count
+		sumD += v.Sum
+		bf.WriteString(fmt.Sprintf("`%s`: %d ván, %s\n", k, v.Count, stringer.FormatCurrency(v.Sum)))
+	}
+	for k, v := range values {
+		if k < 20 {
+			continue
+		}
+		cntD += v.Count
+		sumD += v.Sum
+		bf.WriteString(fmt.Sprintf("`%d`: %d ván, %s\n", k, v.Count, stringer.FormatCurrency(v.Sum)))
+	}
+	bf.WriteString(fmt.Sprintf("`Khác`: %d ván, %s\n", len(records)-cntD, stringer.FormatCurrency(sum-sumD)))
+	bf.WriteString(fmt.Sprintf("\nTổng: %s\n", stringer.FormatCurrency(sum)))
 	return bf.String()
 }
 
