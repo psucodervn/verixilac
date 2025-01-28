@@ -568,7 +568,7 @@ func (m *Manager) PlayerLeave(ctx context.Context, id string) error {
 		return err
 	}
 
-	if m.onPlayerLeaveFunc != nil {
+	if m.onPlayerLeaveFunc != nil && p != nil {
 		m.onPlayerLeaveFunc(p)
 	}
 

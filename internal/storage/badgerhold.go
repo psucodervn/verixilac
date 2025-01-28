@@ -28,6 +28,9 @@ func (b *BadgerHoldStorage) UpdatePlayerStatus(ctx context.Context, id string, s
 		p.UserStatus = status
 		return nil
 	})
+	if p == nil {
+		return nil, badgerhold.ErrNotFound
+	}
 	return p, err
 }
 
@@ -38,6 +41,9 @@ func (b *BadgerHoldStorage) AddPlayerBalance(ctx context.Context, id string, amo
 		p.Balance += amount
 		return nil
 	})
+	if p == nil {
+		return nil, badgerhold.ErrNotFound
+	}
 	return p, err
 }
 

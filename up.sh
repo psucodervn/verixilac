@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 
-REMOTE=ec2-user@ec2-3-0-57-42.ap-southeast-1.compute.amazonaws.com
-REMOTE_DIR=/home/ec2-user/verixilac
+#REMOTE=ec2-user@ec2-3-0-57-42.ap-southeast-1.compute.amazonaws.com
+#REMOTE_DIR=/home/ec2-user/verixilac
+REMOTE=hunglm@34.46.211.87
+REMOTE_DIR=/home/hunglm/verixilac
+
 TAG=${1}
 
 if [[ -n ${TAG} ]]; then
