@@ -465,7 +465,7 @@ type Stat struct {
 }
 
 func (m *Manager) PlayerStats(ctx context.Context, p *model.Player) string {
-	size := 100
+	size := 1000
 	records, err := m.store.ListRecords(ctx, p.ID, size)
 	if err != nil {
 		return err.Error()
